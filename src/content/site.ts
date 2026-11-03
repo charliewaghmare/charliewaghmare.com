@@ -22,7 +22,7 @@ export const site = {
    * Short bio. Leave this empty until you have the copy.
    * Separate paragraphs with a blank line.
    */
-  about: "",
+  about: "I am a 2nd year materials engineering student at the uniersity of british columbia",
   /**
    * Projects are hidden while this list is empty.
    * Add an entry when you want one on the page. Include href, repo, or both.
