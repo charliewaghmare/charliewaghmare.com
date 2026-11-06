@@ -15,11 +15,11 @@
 
 export type PersonalBest = {
   /** What the best is for, such as "5K" or "Half marathon". */
-  event: string;
+  event: "5k";
   /** The time or mark, written the way you want it shown. */
-  mark: string;
+  mark: "16:00.35";
   /** The day you ran it, YYYY-MM-DD. */
-  date: string;
+  date: "March 28th 2026";
   /** Optional place or note. */
   note?: string;
 };
