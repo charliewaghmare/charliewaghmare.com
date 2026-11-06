@@ -43,37 +43,6 @@ function readChunk(
   return { value, index };
 }
 
-function plausible(points: Point[]): boolean {
-  return (
-    points.length > 1 &&
-    points.every(
-      (point) =>
-        point.lat >= -90 &&
-        point.lat <= 90 &&
-        point.lon >= -180 &&
-        point.lon <= 180,
-    )
-  );
-}
-
-export function decodeFlexible(encoded: string): Point[] {
-  const five = decodePolyline(encoded, 5);
-  if (plausible(five)) return five;
-  const six = decodePolyline(encoded, 6);
-  if (plausible(six)) return six;
-  return [];
-}
-
-export function downsample(points: Point[], max: number): Point[] {
-  if (points.length <= max) return points;
-  const step = (points.length - 1) / (max - 1);
-  const sampled: Point[] = [];
-  for (let i = 0; i < max; i += 1) {
-    sampled.push(points[Math.round(i * step)]);
-  }
-  return sampled;
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -93,87 +62,240 @@ function pointFrom(value: unknown): Point | null {
   const lat = asCoord(record.lat ?? record.latitude);
   const lon = asCoord(record.lon ?? record.lng ?? record.longitude);
   if (lat === null || lon === null) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-  return { lat, lon };
+  return pairToPoint(lat, lon);
 }
 
-function longestPointList(root: unknown): Point[] {
-  let best: Point[] = [];
-  const queue: { value: unknown; depth: number }[] = [{ value: root, depth: 0 }];
-  let seen = 0;
+function decodeDimension(
+  encoded: string,
+  precision: number,
+  dimensions: 2 | 3,
+): Point[] {
+  const factor = 10 ** precision;
+  let index = 0;
+  let lat = 0;
+  let lon = 0;
+  const points: Point[] = [];
 
-  while (queue.length > 0 && seen < 4000) {
-    const current = queue.shift();
-    if (!current) break;
-    seen += 1;
-    const { value, depth } = current;
-    if (value == null || depth > 8) continue;
-
-    if (Array.isArray(value)) {
-      const points = value
-        .map(pointFrom)
-        .filter((point): point is Point => point !== null);
-      if (points.length > best.length) best = points;
-      for (const item of value) queue.push({ value: item, depth: depth + 1 });
-      continue;
+  while (index < encoded.length) {
+    const deltas: number[] = [];
+    for (let dimension = 0; dimension < dimensions; dimension += 1) {
+      const chunk = readChunk(encoded, index);
+      if (!chunk) return [];
+      index = chunk.index;
+      deltas.push(chunk.value);
     }
-
-    const record = asRecord(value);
-    if (!record) continue;
-    for (const child of Object.values(record)) {
-      queue.push({ value: child, depth: depth + 1 });
-    }
+    lat += deltas[0] ?? 0;
+    lon += deltas[1] ?? 0;
+    points.push({ lat: lat / factor, lon: lon / factor });
   }
 
+  return points;
+}
+
+function plausibleTrack(points: Point[]): Point[] | null {
+  if (points.length < 2) return null;
+  let minLat = 90;
+  let maxLat = -90;
+  let minLon = 180;
+  let maxLon = -180;
+  for (const point of points) {
+    if (
+      point.lat < -90 ||
+      point.lat > 90 ||
+      point.lon < -180 ||
+      point.lon > 180
+    ) {
+      return null;
+    }
+    minLat = Math.min(minLat, point.lat);
+    maxLat = Math.max(maxLat, point.lat);
+    minLon = Math.min(minLon, point.lon);
+    maxLon = Math.max(maxLon, point.lon);
+  }
+  if (maxLat - minLat > 3 || maxLon - minLon > 3) return null;
+  if (maxLat === minLat && maxLon === minLon) return null;
+  return points;
+}
+
+function decodeTrack(encoded: string): Point[] | null {
+  if (encoded.length < 8 || encoded.length > 500_000) return null;
+  const attempts = [
+    decodeDimension(encoded, 5, 2),
+    decodeDimension(encoded, 6, 2),
+    decodeDimension(encoded, 5, 3),
+    decodeDimension(encoded, 6, 3),
+  ];
+  let best: Point[] | null = null;
+  for (const attempt of attempts) {
+    const track = plausibleTrack(attempt);
+    if (track && (!best || track.length > best.length)) best = track;
+  }
   return best;
 }
 
-function longestEncoded(root: unknown): string | null {
-  const keys = new Set([
-    "gpolyline",
-    "encodedpolyline",
-    "encodedsamplepolyline",
-    "polyline",
-  ]);
-  let best: string | null = null;
-  const queue: { value: unknown; depth: number }[] = [{ value: root, depth: 0 }];
+function toDegrees(value: number, axis: "lat" | "lon"): number | null {
+  const limit = axis === "lat" ? 90 : 180;
+  if (Math.abs(value) <= limit) return value;
+  const degrees = (value * 180) / 2 ** 31;
+  if (Math.abs(degrees) <= limit) return degrees;
+  return null;
+}
+
+function pairToPoint(first: number, second: number): Point | null {
+  const lat = toDegrees(first, "lat");
+  const lon = toDegrees(second, "lon");
+  if (lat !== null && lon !== null) return { lat, lon };
+  const swappedLat = toDegrees(second, "lat");
+  const swappedLon = toDegrees(first, "lon");
+  if (swappedLat !== null && swappedLon !== null) {
+    return { lat: swappedLat, lon: swappedLon };
+  }
+  return null;
+}
+
+function pointsFromArray(value: unknown[]): Point[] | null {
+  const objects = value
+    .map(pointFrom)
+    .filter((point): point is Point => point !== null);
+  if (objects.length >= 2 && objects.length >= value.length * 0.8) {
+    return plausibleTrack(objects);
+  }
+
+  const pairs: Point[] = [];
+  for (const item of value) {
+    if (!Array.isArray(item) || item.length < 2) return null;
+    const first = asCoord(item[0]);
+    const second = asCoord(item[1]);
+    if (first === null || second === null) return null;
+    const point = pairToPoint(first, second);
+    if (!point) return null;
+    pairs.push(point);
+  }
+  return plausibleTrack(pairs);
+}
+
+function keyRank(key: string): number | null {
+  const lower = key.toLowerCase();
+  if (lower.includes("heat")) return null;
+  if (
+    lower.includes("polyline") ||
+    lower.includes("latlng") ||
+    lower.includes("geopoint") ||
+    lower === "track"
+  ) {
+    return 2;
+  }
+  return 1;
+}
+
+function collectTrack(root: unknown): Point[] {
+  let best: Point[] = [];
+  const high: { value: unknown; depth: number; rank: number }[] = [];
+  const low: { value: unknown; depth: number; rank: number }[] = [
+    { value: root, depth: 0, rank: 1 },
+  ];
   let seen = 0;
 
-  while (queue.length > 0 && seen < 4000) {
-    const current = queue.shift();
+  while ((high.length > 0 || low.length > 0) && seen < 6000) {
+    const current = high.shift() ?? low.shift();
     if (!current) break;
     seen += 1;
-    const { value, depth } = current;
-    if (value == null || depth > 8) continue;
+    const { value, depth, rank } = current;
+    if (value == null || depth > 10) continue;
+
+    if (typeof value === "string") {
+      if (rank >= 2) {
+        const decoded = decodeTrack(value);
+        if (decoded && decoded.length > best.length) best = decoded;
+      }
+      continue;
+    }
 
     if (Array.isArray(value)) {
-      for (const item of value) queue.push({ value: item, depth: depth + 1 });
+      const track = rank >= 2 ? pointsFromArray(value) : null;
+      if (track && track.length > best.length) best = track;
+      if (track) continue;
+      const next = rank >= 2 ? high : low;
+      for (const item of value) next.push({ value: item, depth: depth + 1, rank });
       continue;
     }
 
     const record = asRecord(value);
     if (!record) continue;
     for (const [key, child] of Object.entries(record)) {
-      if (
-        keys.has(key.toLowerCase()) &&
-        typeof child === "string" &&
-        child.length > 8 &&
-        (!best || child.length > best.length)
-      ) {
-        best = child;
-      }
-      queue.push({ value: child, depth: depth + 1 });
+      const nextRank = keyRank(key);
+      if (nextRank === null) continue;
+      const item = { value: child, depth: depth + 1, rank: Math.max(rank, nextRank) };
+      if (item.rank >= 2) high.push(item);
+      else low.push(item);
     }
   }
 
   return best;
 }
 
-export function pointsFromPayload(payload: unknown): Point[] {
-  const encoded = longestEncoded(payload);
-  if (encoded) {
-    const decoded = decodeFlexible(encoded);
-    if (decoded.length > 1) return downsample(decoded, 400);
+function simplify(points: Point[], epsilon: number): Point[] {
+  if (points.length < 3) return points;
+  const midLat = points.reduce((sum, point) => sum + point.lat, 0) / points.length;
+  const cosLat = Math.cos((midLat * Math.PI) / 180) || 1;
+  const keep = new Array<boolean>(points.length).fill(false);
+  keep[0] = true;
+  keep[points.length - 1] = true;
+  const stack: [number, number][] = [[0, points.length - 1]];
+
+  while (stack.length > 0) {
+    const range = stack.pop();
+    if (!range) break;
+    const [start, end] = range;
+    let maxDistance = 0;
+    let index = -1;
+    for (let i = start + 1; i < end; i += 1) {
+      const distance = perpendicularDistance(points[i], points[start], points[end], cosLat);
+      if (distance > maxDistance) {
+        maxDistance = distance;
+        index = i;
+      }
+    }
+    if (index !== -1 && maxDistance > epsilon) {
+      keep[index] = true;
+      stack.push([start, index], [index, end]);
+    }
   }
-  return downsample(longestPointList(payload), 400);
+
+  return points.filter((_, index) => keep[index]);
+}
+
+function perpendicularDistance(
+  point: Point,
+  start: Point,
+  end: Point,
+  cosLat: number,
+): number {
+  const x = (point.lon - start.lon) * cosLat;
+  const y = point.lat - start.lat;
+  const dx = (end.lon - start.lon) * cosLat;
+  const dy = end.lat - start.lat;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return Math.hypot(x, y);
+  return Math.abs(dy * x - dx * y) / length;
+}
+
+function simplifyTrack(points: Point[]): Point[] {
+  if (points.length < 3) return points;
+  const first = simplify(points, 0.000012);
+  if (first.length <= 1600) return first;
+  return simplify(points, 0.00004);
+}
+
+export function pointsFromPayload(payload: unknown): Point[] {
+  return simplifyTrack(collectTrack(payload));
+}
+
+export function pointsFromPayloads(payloads: unknown[]): Point[] {
+  let best: Point[] = [];
+  for (const payload of payloads) {
+    const track = collectTrack(payload);
+    if (track.length > best.length) best = track;
+  }
+  return simplifyTrack(best);
 }

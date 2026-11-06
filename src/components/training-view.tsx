@@ -106,7 +106,7 @@ export function TrainingView({
           </ul>
         ) : (
           <p className="mt-4 text-sm leading-6 text-stone-600 dark:text-stone-400">
-            No activities in this window.
+            No runs in this window.
           </p>
         )}
       </section>

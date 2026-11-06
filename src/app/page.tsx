@@ -29,7 +29,7 @@ export default function Home() {
         </p>
       </header>
 
-      <aside className="mt-8 xl:fixed xl:right-6 xl:top-6 xl:z-20 xl:mt-0 xl:w-64">
+      <aside className="mt-8 xl:fixed xl:right-6 xl:top-6 xl:z-20 xl:mt-0 xl:w-72">
         <Suspense fallback={<LatestRunFallback />}>
           <LatestRun />
         </Suspense>

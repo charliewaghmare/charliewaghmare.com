@@ -3,10 +3,10 @@ import { RouteMap } from "@/components/route-map";
 import type { TrainingSnapshot } from "@/lib/garmin/snapshot";
 
 export function LatestRunCard({ snapshot }: { snapshot: TrainingSnapshot }) {
-  const run = snapshot.latestRun;
-  const label = run
-    ? `Latest run, ${run.distanceLabel}, ${run.timeLabel}, average heart rate ${run.heartRateLabel}. Open training.`
-    : "Latest run. Open training.";
+  const activity = snapshot.latestRun;
+  const label = activity
+    ? `Most recent activity, ${activity.name}, ${activity.distanceLabel}, ${activity.timeLabel}, average pace ${activity.paceLabel}, average heart rate ${activity.heartRateLabel}. Open training.`
+    : "Most recent activity. Open training.";
 
   return (
     <Link
@@ -14,30 +14,41 @@ export function LatestRunCard({ snapshot }: { snapshot: TrainingSnapshot }) {
       aria-label={label}
       className="block overflow-hidden rounded-lg border border-stone-200 bg-white text-stone-900 shadow-sm outline-none transition-colors hover:border-stone-400 focus-visible:border-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 dark:hover:border-stone-600"
     >
-      <div className="relative h-44 bg-stone-900 text-stone-100">
-        <RouteMap
-          points={run?.points ?? []}
-          className="absolute inset-0 h-full w-full text-stone-100"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/10 to-stone-950/45" />
-        <div className="absolute inset-x-3 top-2.5 flex items-start justify-between gap-3 text-xs">
-          <p className="truncate font-medium">{run?.name ?? "Latest run"}</p>
+      <div className="px-3 pt-3">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm font-medium">Most recent activity</p>
           {snapshot.source === "sample" ? (
-            <span className="shrink-0 rounded bg-white/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
+            <span className="shrink-0 rounded border border-stone-200 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-stone-500 dark:border-stone-700 dark:text-stone-400">
               Sample
             </span>
           ) : (
-            <span className="shrink-0 text-white/70">{run?.dateLabel}</span>
+            <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">
+              {activity?.dateLabel}
+            </span>
           )}
         </div>
-        <dl className="absolute inset-x-3 bottom-2.5 grid grid-cols-3 gap-2">
-          <Stat label="Distance" value={run?.distanceLabel ?? "—"} />
-          <Stat label="Time" value={run?.timeLabel ?? "—"} />
-          <Stat label="Avg HR" value={run ? `${run.heartRateLabel}` : "—"} />
-        </dl>
+        {activity && activity.points.length > 1 ? (
+          <RouteMap
+            points={activity.points}
+            className="mt-2 h-36 w-full text-stone-800 dark:text-stone-100"
+          />
+        ) : (
+          <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+            No GPS track for this activity.
+          </p>
+        )}
+        <p className="mt-2 truncate text-xs text-stone-500 dark:text-stone-400">
+          {activity ? `${activity.name} · ${activity.dateLabel}` : "Nothing recent"}
+        </p>
       </div>
-      <p className="px-3 py-2 text-xs text-stone-500 dark:text-stone-400">
-        {run ? `${run.dateLabel} · Last 30 days` : "Last 30 days"}
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-stone-200 px-3 py-3 dark:border-stone-800">
+        <Stat label="Distance" value={activity?.distanceLabel ?? "—"} />
+        <Stat label="Time" value={activity?.timeLabel ?? "—"} />
+        <Stat label="Avg pace" value={activity?.paceLabel ?? "—"} />
+        <Stat label="Avg HR" value={activity?.heartRateLabel ?? "—"} />
+      </dl>
+      <p className="border-t border-stone-200 px-3 py-2 text-xs text-stone-500 dark:border-stone-800 dark:text-stone-400">
+        Last 30 days
       </p>
     </Link>
   );
@@ -46,8 +57,10 @@ export function LatestRunCard({ snapshot }: { snapshot: TrainingSnapshot }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wide text-white/65">{label}</dt>
-      <dd className="text-sm font-semibold tabular-nums text-white">{value}</dd>
+      <dt className="text-[10px] uppercase tracking-wide text-stone-500 dark:text-stone-400">
+        {label}
+      </dt>
+      <dd className="text-sm font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -55,7 +68,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export function LatestRunFallback() {
   return (
     <div
-      className="h-52 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800"
+      className="h-72 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800"
       aria-hidden="true"
     />
   );

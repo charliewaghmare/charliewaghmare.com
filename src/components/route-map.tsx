@@ -8,6 +8,7 @@ export function RouteMap({
   className?: string;
 }) {
   const path = tracePath(points);
+  if (!path) return null;
 
   return (
     <svg
@@ -16,25 +17,14 @@ export function RouteMap({
       className={className}
       aria-hidden="true"
     >
-      {path ? (
-        <path
-          d={path}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.75"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      ) : (
-        <path
-          d="M40 120 C 90 40, 150 150, 210 70 S 280 90, 290 50"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          opacity="0.35"
-        />
-      )}
+      <path
+        d={path}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -53,7 +43,7 @@ function tracePath(points: Point[]): string | null {
   const spanY = Math.max(maxLat - minLat, 0.00001);
   const width = 320;
   const height = 180;
-  const pad = 28;
+  const pad = 14;
   const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanY);
   const usedW = spanX * scale;
   const usedH = spanY * scale;

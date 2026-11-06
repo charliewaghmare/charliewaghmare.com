@@ -19,7 +19,7 @@ import {
   phrase,
   vancouverToday,
 } from "@/lib/garmin/format";
-import { pointsFromPayload, type Point } from "@/lib/garmin/polyline";
+import { pointsFromPayloads, type Point } from "@/lib/garmin/polyline";
 
 export type RunCard = {
   name: string;
@@ -27,6 +27,7 @@ export type RunCard = {
   distanceLabel: string;
   timeLabel: string;
   heartRateLabel: string;
+  paceLabel: string;
   points: Point[];
 };
 
@@ -68,6 +69,8 @@ type Activity = {
   distanceMeters: number;
   durationSeconds: number;
   averageHr: number | null;
+  averageSpeed: number | null;
+  movingSeconds: number | null;
   run: boolean;
 };
 
@@ -116,13 +119,13 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
   const activities = parsed.filter(
     (activity) => activity.date >= start && activity.date <= end,
   );
-  const latest = parsed.find((activity) => activity.run) ?? null;
+  const latest = parsed[0] ?? null;
   const points = latest ? await routeFor(latest.id) : [];
   const displayName = displayNameFrom(profile);
   const encodedName = displayName ? encodeURIComponent(displayName) : null;
 
   const sleepStart = addDays(end, -27);
-  const [rhr, hrv, vo2, status, dailyStatus, balance, readiness, sleepA, sleepB, battery, fitness, endurance, predictions] =
+  const [rhr, hrv, vo2, status, dailyStatus, balance, readiness, sleepA, sleepB, predictions] =
     await Promise.all([
       encodedName
         ? optional(`/userstats-service/wellness/daily/${encodedName}`, {
@@ -139,12 +142,6 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
       optional(`/metrics-service/metrics/trainingreadiness/${start}/${end}`),
       optional(`/sleep-service/stats/sleep/daily/${start}/${addDays(start, 27)}`),
       optional(`/sleep-service/stats/sleep/daily/${sleepStart}/${end}`),
-      optional("/wellness-service/wellness/bodyBattery/reports/daily", {
-        startDate: start,
-        endDate: end,
-      }),
-      optional(`/fitnessage-service/fitnessage/v2/${end}`),
-      optional("/metrics-service/metrics/endurancescore", { calendarDate: end }),
       encodedName
         ? optional(`/metrics-service/metrics/racepredictions/latest/${encodedName}`)
         : Promise.resolve(null),
@@ -159,9 +156,6 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     balance,
     readiness,
     sleep: [sleepA, sleepB],
-    battery,
-    fitness,
-    endurance,
     predictions,
   });
 
@@ -173,7 +167,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     totalsLabel: totalsLabel(activities),
     metrics,
     days: dayBars(start, activities),
-    activities: activities.map(toRow),
+    activities: activities.filter((activity) => activity.run).map(toRow),
   };
 }
 
@@ -190,17 +184,19 @@ async function optional(
 }
 
 async function routeFor(activityId: string): Promise<Point[]> {
-  const polyline = await optional(
-    `/activity-service/activity/polyline/${encodeURIComponent(activityId)}`,
-  );
-  const fromPolyline = pointsFromPayload(polyline);
-  if (fromPolyline.length > 1) return fromPolyline;
-
-  const details = await optional(
-    `/activity-service/activity/${encodeURIComponent(activityId)}/mapdetails`,
-    { maxPolylineSize: 2000, maxHeatMapSize: 0 },
-  );
-  return pointsFromPayload(details);
+  const id = encodeURIComponent(activityId);
+  const [details, map, polyline] = await Promise.all([
+    optional(`/activity-service/activity/${id}/details`, {
+      maxChartSize: 1,
+      maxPolylineSize: 8000,
+    }),
+    optional(`/activity-service/activity/${id}/mapdetails`, {
+      maxPolylineSize: 8000,
+      maxHeatMapSize: 0,
+    }),
+    optional(`/activity-service/activity/polyline/${id}`),
+  ]);
+  return pointsFromPayloads([details, map, polyline]);
 }
 
 function parseActivities(payload: unknown): Activity[] {
@@ -226,6 +222,8 @@ function parseActivities(payload: unknown): Activity[] {
       distanceMeters: numberValue(record.distance) ?? 0,
       durationSeconds: numberValue(record.duration) ?? 0,
       averageHr: positive(numberValue(record.averageHR)),
+      averageSpeed: positive(numberValue(record.averageSpeed)),
+      movingSeconds: positive(numberValue(record.movingDuration)),
       run: /run/i.test(typeKey),
     });
   }
@@ -253,6 +251,14 @@ function activityDate(record: Record<string, unknown>): string | null {
   }).format(new Date(ms));
 }
 
+function paceLabelFor(activity: Activity): string {
+  if (activity.averageSpeed && activity.averageSpeed > 0.4) {
+    return formatPace(1000, 1000 / activity.averageSpeed) ?? "—";
+  }
+  const seconds = activity.movingSeconds ?? activity.durationSeconds;
+  return formatPace(activity.distanceMeters, seconds) ?? "—";
+}
+
 function toRunCard(activity: Activity, points: Point[]): RunCard {
   return {
     name: activity.name,
@@ -260,6 +266,7 @@ function toRunCard(activity: Activity, points: Point[]): RunCard {
     distanceLabel: formatDistance(activity.distanceMeters),
     timeLabel: formatDuration(activity.durationSeconds),
     heartRateLabel: activity.averageHr ? `${Math.round(activity.averageHr)}` : "—",
+    paceLabel: paceLabelFor(activity),
     points,
   };
 }
@@ -347,9 +354,6 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
       { label: "HRV", value: "68 ms", detail: "7-day 64 ms" },
       { label: "Readiness", value: "74" },
       { label: "Sleep", value: "81" },
-      { label: "Body battery", value: "64", detail: "Charged 42" },
-      { label: "Fitness age", value: "24", detail: "Age 20" },
-      { label: "Endurance", value: "6200" },
       { label: "Race predictions", value: "5K 18:40", detail: "10K 39:05 · Half 1:26:20 · Marathon 3:01:00" },
     ],
     days: dayBars(start, samples),
@@ -373,6 +377,8 @@ function sampleActivity(
     distanceMeters,
     durationSeconds,
     averageHr,
+    averageSpeed: null,
+    movingSeconds: null,
     run: true,
   };
 }

@@ -185,49 +185,6 @@ export function latestSleepScore(payloads: unknown[]): number | null {
   return latest;
 }
 
-export function latestBodyBattery(payload: unknown): {
-  level: number | null;
-  charged: number | null;
-} {
-  const rows = Array.isArray(payload) ? payload : [payload];
-  let level: number | null = null;
-  let charged: number | null = null;
-  for (const row of rows) {
-    const chargedValue = findNumber(row, "charged");
-    if (chargedValue !== null) charged = chargedValue;
-    const series = findByKey(row, "bodyBatteryValuesArray");
-    if (Array.isArray(series)) {
-      for (const entry of series) {
-        if (!Array.isArray(entry)) continue;
-        for (const part of entry) {
-          const value = asNumber(part);
-          if (value !== null && value >= 5 && value <= 100) level = value;
-        }
-      }
-    }
-    const direct = findNumber(row, "currentBodyBattery") ?? findNumber(row, "bodyBattery");
-    if (direct !== null) level = direct;
-  }
-  return { level, charged };
-}
-
-export function fitnessAge(payload: unknown): {
-  fitness: number | null;
-  actual: number | null;
-} {
-  return {
-    fitness:
-      findNumber(payload, "fitnessAge") ??
-      findNumber(payload, "biologicalAge") ??
-      findNumber(payload, "achievableFitnessAge"),
-    actual: findNumber(payload, "chronologicalAge"),
-  };
-}
-
-export function enduranceScore(payload: unknown): number | null {
-  return findNumber(payload, "overallScore") ?? findNumber(payload, "enduranceScore");
-}
-
 export function racePredictions(payload: unknown): {
   fiveK: number | null;
   tenK: number | null;
@@ -261,9 +218,6 @@ export function buildMetrics(input: {
   balance: unknown;
   readiness: unknown;
   sleep: unknown[];
-  battery: unknown;
-  fitness: unknown;
-  endurance: unknown;
   predictions: unknown;
 }): Metric[] {
   const statusText = trainingStatus(input.status) ?? trainingStatus(input.dailyStatus);
@@ -274,9 +228,6 @@ export function buildMetrics(input: {
   const vo2 = vo2Max(input.vo2);
   const readiness = latestReadiness(input.readiness);
   const sleep = latestSleepScore(input.sleep);
-  const battery = latestBodyBattery(input.battery);
-  const age = fitnessAge(input.fitness);
-  const endurance = enduranceScore(input.endurance);
   const races = racePredictions(input.predictions);
 
   const metrics: Metric[] = [
@@ -325,20 +276,6 @@ export function buildMetrics(input: {
     {
       label: "Sleep",
       value: sleep !== null ? round(sleep) : "—",
-    },
-    {
-      label: "Body battery",
-      value: battery.level !== null ? round(battery.level) : "—",
-      detail: battery.charged !== null ? `Charged ${round(battery.charged)}` : undefined,
-    },
-    {
-      label: "Fitness age",
-      value: age.fitness !== null ? round(age.fitness) : "—",
-      detail: age.actual !== null ? `Age ${round(age.actual)}` : undefined,
-    },
-    {
-      label: "Endurance",
-      value: endurance !== null ? round(endurance) : "—",
     },
     {
       label: "Race predictions",
