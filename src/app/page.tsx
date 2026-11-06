@@ -1,7 +1,14 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import {
+  LatestRunCard,
+  LatestRunFallback,
+} from "@/components/latest-run-card";
 import { About } from "@/components/about";
 import { Projects } from "@/components/projects";
 import { ResumeSection } from "@/components/resume-section";
 import { site } from "@/content/site";
+import { getTrainingSnapshot } from "@/lib/garmin/snapshot";
 import { hasResumePdf } from "@/lib/resume";
 
 export default function Home() {
@@ -11,10 +18,22 @@ export default function Home() {
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {site.name}
         </h1>
-        <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-          {site.domain}
+        <p className="mt-3 flex items-center gap-x-3 text-sm text-stone-500 dark:text-stone-400">
+          <span>{site.domain}</span>
+          <Link
+            href="/training"
+            className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
+          >
+            Training
+          </Link>
         </p>
       </header>
+
+      <aside className="mt-8 xl:fixed xl:right-6 xl:top-6 xl:z-20 xl:mt-0 xl:w-64">
+        <Suspense fallback={<LatestRunFallback />}>
+          <LatestRun />
+        </Suspense>
+      </aside>
 
       <div className="mt-14 space-y-12">
         <About about={site.about} />
@@ -23,4 +42,9 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+async function LatestRun() {
+  const snapshot = await getTrainingSnapshot();
+  return <LatestRunCard snapshot={snapshot} />;
 }

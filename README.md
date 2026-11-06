@@ -24,6 +24,7 @@ npm run build
 | --- | --- |
 | Name, about text, and projects | `src/content/site.ts` |
 | Résumé PDF | `public/resume.pdf` |
+| Personal bests | `src/content/personal-bests.ts` |
 | Page layout | `src/app/page.tsx` and `src/components/` |
 
 The About section shows a note until `about` in `src/content/site.ts` has text. Separate paragraphs with a blank line.
@@ -32,10 +33,20 @@ View and download buttons stay hidden until `public/resume.pdf` exists. Refresh 
 
 The Projects section stays off the page while `projects` is an empty list. Add an object with a title, a short description, and `href` (the hosted project), `repo` (its GitHub repository), or both.
 
+## Garmin
+
+The homepage has a latest-run card in the top right on a wide screen, and under the name on a phone. It shows distance, time, average heart rate, and the route trace. [charliewaghmare.com/training](https://charliewaghmare.com/training) shows the last 30 days: training load, load balance, VO2 max, resting heart rate, HRV, readiness, sleep, body battery, and the runs in that window.
+
+Personal bests are not taken from Garmin. Edit `src/content/personal-bests.ts` when you run a new one, then push.
+
+Real data needs an environment variable named `GARMIN_TOKEN`. Its value is the JSON in `~/.garminconnect/garmin_tokens.json` after you sign in with the [Garmin MCP](https://github.com/Taxuspt/garmin_mcp) (`garmin-mcp-auth`). Put that JSON in Vercel under **Settings → Environment Variables** for Production, then redeploy. Do not commit it, and do not paste it into chat.
+
+Until that variable is set, the pages show a labeled sample. A refresh asks Garmin again about once a minute, so visitors are not each calling Garmin.
+
 ## Deploy on Vercel
 
 1. Push this repository to GitHub.
-2. In [Vercel](https://vercel.com), import the repository. Use the Next.js preset. No environment variables are required.
+2. In [Vercel](https://vercel.com), import the repository. Use the Next.js preset. Add `GARMIN_TOKEN` when you want live training data. The site still builds without it.
 3. Deploy. Vercel runs `npm run build`.
 
 Each push to the production branch deploys again. Include `public/resume.pdf` in the repository when you want the résumé buttons on the live site.
