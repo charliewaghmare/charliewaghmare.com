@@ -1,6 +1,18 @@
+import Link from "next/link";
 import type { PersonalBest } from "@/content/personal-bests";
+import { site } from "@/content/site";
 import { formatDay } from "@/lib/garmin/format";
-import type { TrainingSnapshot } from "@/lib/garmin/snapshot";
+import type { ActivityRow, TrainingSnapshot } from "@/lib/garmin/snapshot";
+
+const PRIMARY_LABELS = [
+  "Training status",
+  "Training load",
+  "VO2 max",
+  "HRV",
+  "Readiness",
+] as const;
+
+const SECONDARY_WIDE = new Set(["Race predictions", "Training balance"]);
 
 export function TrainingView({
   snapshot,
@@ -10,54 +22,122 @@ export function TrainingView({
   bests: PersonalBest[];
 }) {
   const maxKm = Math.max(...snapshot.days.map((day) => day.km), 0);
+  const byLabel = new Map(snapshot.metrics.map((metric) => [metric.label, metric]));
+  const primary = PRIMARY_LABELS.map((label) => byLabel.get(label)).filter(
+    (metric): metric is NonNullable<typeof metric> => Boolean(metric),
+  );
+  const primarySet = new Set<string>(PRIMARY_LABELS);
+  const secondary = snapshot.metrics.filter((metric) => !primarySet.has(metric.label));
+  const latestRun = snapshot.activities[0] ?? null;
 
   return (
     <>
-      <p className="mt-3 text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
-        {snapshot.rangeLabel}
-      </p>
-      {snapshot.note ? (
-        <p className="mt-6 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
-          {snapshot.note}
-        </p>
-      ) : null}
-
-      {snapshot.metrics.length > 0 ? (
-        <section className="mt-10" aria-labelledby="metrics-heading">
-          <h2
-            id="metrics-heading"
-            className="type-section text-[1.3125rem] leading-[1.2] text-stone-500 sm:text-[1.5rem] dark:text-stone-400"
-          >
-            Now
-          </h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {snapshot.metrics.map((metric) => (
-              <article
-                key={metric.label}
-                className="rounded-lg border border-stone-200 px-3 py-3 dark:border-stone-800"
+      <header className="border-b border-stone-200 pb-8 dark:border-stone-800">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-stone-500 dark:text-stone-400">
+              <Link
+                href="/"
+                className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
               >
-                <p className="text-sm font-medium leading-5 text-stone-500 dark:text-stone-400">
-                  {metric.label}
-                </p>
-                <p className="type-metric mt-1 text-[1.875rem] leading-[1.1] sm:text-[2.125rem]">
-                  <WithUnits text={metric.value} />
-                </p>
-                {metric.detail ? (
-                  <p className="mt-1 text-[0.8125rem] font-normal leading-5 text-stone-500 dark:text-stone-400">
-                    <WithUnits text={metric.detail} unitClassName="type-unit-inline" />
-                  </p>
-                ) : null}
-              </article>
+                {site.name}
+              </Link>
+              <span aria-hidden="true"> / </span>
+              <span>Training</span>
+            </p>
+            <h1 className="type-display mt-3 text-[2.125rem] leading-[1.1] sm:text-[3rem]">
+              Training
+            </h1>
+            <p className="mt-3 max-w-xl text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
+              A live look at the numbers behind the miles.
+            </p>
+          </div>
+          <div className="shrink-0 text-left lg:text-right">
+            <p className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-stone-500 dark:text-stone-400">
+              Last 30 days
+            </p>
+            <p className="type-figure mt-1 text-[0.8125rem] text-stone-600 dark:text-stone-300">
+              {snapshot.rangeLabel}
+            </p>
+          </div>
+        </div>
+        {snapshot.note ? (
+          <p className="mt-6 max-w-2xl text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
+            {snapshot.note}
+          </p>
+        ) : null}
+      </header>
+
+      {primary.length > 0 ? (
+        <section className="mt-10" aria-labelledby="primary-metrics-heading">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2
+              id="primary-metrics-heading"
+              className="type-section text-[1.125rem] leading-tight text-stone-800 sm:text-[1.25rem] dark:text-stone-100"
+            >
+              Now
+            </h2>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            {primary.map((metric) => (
+              <MetricCard
+                key={metric.label}
+                metric={metric}
+                className={
+                  metric.label === "Training status"
+                    ? "col-span-2 md:col-span-1"
+                    : undefined
+                }
+              />
             ))}
           </div>
         </section>
       ) : null}
 
-      <section className="mt-12" aria-labelledby="runs-heading">
+      <section
+        className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-5"
+        aria-labelledby="featured-heading"
+      >
+        <h2 id="featured-heading" className="sr-only">
+          Latest run and training overview
+        </h2>
+        <LatestRunPanel activity={latestRun} />
+        <TrainingOverviewPanel
+          totalsLabel={snapshot.totalsLabel}
+          days={snapshot.days}
+          maxKm={maxKm}
+        />
+      </section>
+
+      {secondary.length > 0 ? (
+        <section className="mt-12" aria-labelledby="secondary-metrics-heading">
+          <h2
+            id="secondary-metrics-heading"
+            className="type-section text-[1.125rem] leading-tight text-stone-800 sm:text-[1.25rem] dark:text-stone-100"
+          >
+            Recovery and targets
+          </h2>
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {secondary.map((metric) => (
+              <MetricCard
+                key={metric.label}
+                metric={metric}
+                className={
+                  SECONDARY_WIDE.has(metric.label)
+                    ? "col-span-2"
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="mt-14 border-t border-stone-200 pt-10 dark:border-stone-800" aria-labelledby="runs-heading">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2
             id="runs-heading"
-            className="type-display text-[1.375rem] leading-[1.15] text-stone-500 sm:text-[1.625rem] dark:text-stone-400"
+            className="type-display text-[1.375rem] leading-[1.15] text-stone-800 sm:text-[1.625rem] dark:text-stone-100"
           >
             Runs
           </h2>
@@ -65,13 +145,13 @@ export function TrainingView({
             <WithUnits text={snapshot.totalsLabel} unitClassName="type-unit-inline" />
           </p>
         </div>
-        <DistanceChart days={snapshot.days} maxKm={maxKm} />
+        <DistanceChart days={snapshot.days} maxKm={maxKm} compact />
         {snapshot.activities.length > 0 ? (
-          <ul className="mt-4 divide-y divide-stone-200 dark:divide-stone-800">
+          <ul className="mt-6 divide-y divide-stone-200 dark:divide-stone-800">
             {snapshot.activities.map((activity) => (
               <li
                 key={activity.id}
-                className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline sm:gap-6"
+                className="grid gap-2 py-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] sm:items-baseline sm:gap-8"
               >
                 <div className="min-w-0">
                   {activity.href ? (
@@ -88,48 +168,44 @@ export function TrainingView({
                       {activity.name}
                     </p>
                   )}
-                  <p className="text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
+                  <p className="mt-1 text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
                     {activity.dateLabel}
                     {activity.run ? "" : ` · ${activity.typeLabel}`}
                   </p>
                 </div>
-                <p className="type-figure text-[0.8125rem] text-stone-600 sm:text-sm dark:text-stone-300">
-                  <StatLine
-                    parts={[
-                      activity.distanceLabel,
-                      activity.timeLabel,
-                      activity.paceLabel,
-                      activity.heartRateLabel,
-                    ]}
-                  />
-                </p>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 sm:text-right">
+                  <ActivityStat label="Distance" value={activity.distanceLabel} />
+                  <ActivityStat label="Duration" value={activity.timeLabel} />
+                  <ActivityStat label="Pace" value={activity.paceLabel} />
+                  <ActivityStat label="Avg HR" value={activity.heartRateLabel} />
+                </dl>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
+          <p className="mt-6 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
             No runs in this window.
           </p>
         )}
       </section>
 
-      <section className="mt-12" aria-labelledby="bests-heading">
+      <section className="mt-14 border-t border-stone-200 pt-10 dark:border-stone-800" aria-labelledby="bests-heading">
         <h2
           id="bests-heading"
-          className="type-display text-[1.375rem] leading-[1.15] text-stone-500 sm:text-[1.625rem] dark:text-stone-400"
+          className="type-display text-[1.375rem] leading-[1.15] text-stone-800 sm:text-[1.625rem] dark:text-stone-100"
         >
           Personal bests
         </h2>
         {bests.length > 0 ? (
-          <ul className="mt-4 divide-y divide-stone-200 dark:divide-stone-800">
+          <ul className="mt-6 divide-y divide-stone-200 dark:divide-stone-800">
             {bests.map((best) => (
               <li
                 key={`${best.event}-${best.date}-${best.mark}`}
-                className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
+                className="grid gap-1 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
               >
                 <div>
                   <p className="text-[0.9375rem] font-semibold leading-snug">{best.event}</p>
-                  <p className="text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
+                  <p className="mt-1 text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
                     {best.date ? formatBestDate(best.date) : "Date not set"}
                     {best.note ? ` · ${best.note}` : ""}
                   </p>
@@ -141,7 +217,7 @@ export function TrainingView({
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
+          <p className="mt-6 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
             None yet. Add one in{" "}
             <code className="text-code">src/content/personal-bests.ts</code>.
           </p>
@@ -151,19 +227,211 @@ export function TrainingView({
   );
 }
 
-function DistanceChart({
+function MetricCard({
+  metric,
+  className,
+}: {
+  metric: { label: string; value: string; detail?: string };
+  className?: string;
+}) {
+  const textual = isTextualMetric(metric.value);
+
+  return (
+    <article
+      className={[
+        "flex min-h-[8.5rem] flex-col rounded-lg border border-stone-200 px-4 py-4 dark:border-stone-800",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <p className="text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
+        {metric.label}
+      </p>
+      <p
+        className={[
+          "type-metric mt-2 leading-[1.15]",
+          textual
+            ? "text-[1.375rem] sm:text-[1.5rem]"
+            : "text-[1.75rem] sm:text-[1.875rem]",
+        ].join(" ")}
+      >
+        <WithUnits text={metric.value} />
+      </p>
+      {metric.detail ? (
+        <p className="mt-2 text-[0.8125rem] font-normal leading-5 text-stone-500 dark:text-stone-400">
+          <WithUnits text={metric.detail} unitClassName="type-unit-inline" />
+        </p>
+      ) : (
+        <p className="mt-2 text-[0.8125rem] leading-5 text-transparent" aria-hidden="true">
+          —
+        </p>
+      )}
+      <div
+        className="mt-auto min-h-8 border-t border-dashed border-stone-200 pt-3 dark:border-stone-800"
+        aria-hidden="true"
+      />
+    </article>
+  );
+}
+
+function LatestRunPanel({ activity }: { activity: ActivityRow | null }) {
+  return (
+    <article className="flex min-h-[22rem] flex-col rounded-lg border border-stone-200 p-5 sm:p-6 dark:border-stone-800">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-stone-500 dark:text-stone-400">
+            Latest run
+          </p>
+          {activity ? (
+            <>
+              <h3 className="type-display mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
+                {activity.href ? (
+                  <a
+                    href={activity.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
+                  >
+                    {activity.name}
+                  </a>
+                ) : (
+                  activity.name
+                )}
+              </h3>
+              <p className="mt-2 text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
+                {activity.dateLabel}
+              </p>
+            </>
+          ) : (
+            <h3 className="type-display mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
+              No recent run
+            </h3>
+          )}
+        </div>
+        {activity?.href ? (
+          <a
+            href={activity.href}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[0.8125rem] font-medium text-stone-600 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:text-stone-300 dark:decoration-stone-700"
+          >
+            View on Garmin
+          </a>
+        ) : null}
+      </div>
+
+      {activity ? (
+        <>
+          <div className="mt-8 grid grid-cols-2 gap-6">
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 dark:text-stone-400">
+                Distance
+              </p>
+              <p className="type-metric mt-1 text-[2rem] leading-none sm:text-[2.25rem]">
+                <WithUnits text={activity.distanceLabel} />
+              </p>
+            </div>
+            <div>
+              <p className="text-[0.75rem] font-medium text-stone-500 dark:text-stone-400">
+                Avg pace
+              </p>
+              <p className="type-metric mt-1 text-[2rem] leading-none sm:text-[2.25rem]">
+                <WithUnits text={activity.paceLabel ?? "—"} />
+              </p>
+            </div>
+          </div>
+          <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <FeaturedStat label="Duration" value={activity.timeLabel} />
+            <FeaturedStat label="Avg HR" value={activity.heartRateLabel} />
+            <FeaturedStat label="Type" value={activity.typeLabel} />
+          </dl>
+          <div
+            className="mt-auto min-h-24 border-t border-dashed border-stone-200 pt-4 dark:border-stone-800"
+            aria-hidden="true"
+          />
+        </>
+      ) : (
+        <p className="mt-8 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
+          No runs in this window.
+        </p>
+      )}
+    </article>
+  );
+}
+
+function TrainingOverviewPanel({
+  totalsLabel,
   days,
   maxKm,
 }: {
+  totalsLabel: string;
   days: TrainingSnapshot["days"];
   maxKm: number;
 }) {
+  return (
+    <article className="flex min-h-[22rem] flex-col rounded-lg border border-stone-200 p-5 sm:p-6 dark:border-stone-800">
+      <p className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-stone-500 dark:text-stone-400">
+        Training overview
+      </p>
+      <h3 className="type-display mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
+        Last 30 days
+      </h3>
+      <p className="type-figure mt-3 text-sm text-stone-600 dark:text-stone-300">
+        <WithUnits text={totalsLabel} unitClassName="type-unit-inline" />
+      </p>
+      <div className="mt-6 flex-1">
+        <DistanceChart days={days} maxKm={maxKm} />
+      </div>
+      <p className="mt-4 text-[0.8125rem] font-normal leading-5 text-stone-500 dark:text-stone-400">
+        Daily run distance for the current window. A fuller load history will land here later.
+      </p>
+    </article>
+  );
+}
+
+function FeaturedStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[0.75rem] font-medium text-stone-500 dark:text-stone-400">{label}</dt>
+      <dd className="type-figure mt-1 text-sm text-stone-800 dark:text-stone-100">
+        <WithUnits text={value} unitClassName="type-unit-inline" />
+      </dd>
+    </div>
+  );
+}
+
+function ActivityStat({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <dt className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-stone-500 dark:text-stone-400">
+        {label}
+      </dt>
+      <dd className="type-figure mt-1 text-[0.8125rem] text-stone-700 sm:text-sm dark:text-stone-200">
+        <WithUnits text={value ?? "—"} unitClassName="type-unit-inline" />
+      </dd>
+    </div>
+  );
+}
+
+function DistanceChart({
+  days,
+  maxKm,
+  compact = false,
+}: {
+  days: TrainingSnapshot["days"];
+  maxKm: number;
+  compact?: boolean;
+}) {
   const peak = maxKm > 0 ? maxKm : 1;
   return (
-    <div className="mt-4">
+    <div className={compact ? "mt-5" : undefined}>
       <svg
         viewBox={`0 0 ${days.length * 12} 96`}
-        className="h-24 w-full text-stone-800 dark:text-stone-200"
+        className={[
+          "w-full text-stone-800 dark:text-stone-200",
+          compact ? "h-24" : "h-36 sm:h-44",
+        ].join(" ")}
         role="img"
         aria-label="Run distance over the last 30 days"
       >
@@ -203,6 +471,11 @@ function formatBestDate(value: string): string {
   return formatDay(value);
 }
 
+function isTextualMetric(value: string): boolean {
+  const letters = value.replace(/[^A-Za-z]/g, "");
+  return letters.length >= 3;
+}
+
 const UNIT_PATTERN = /(\/km|\s+km|\s+bpm|\s+ms)/g;
 
 function WithUnits({
@@ -224,21 +497,26 @@ function WithUnits({
   );
 }
 
-function StatLine({ parts }: { parts: (string | null)[] }) {
-  const items = parts.filter((part): part is string => Boolean(part));
-  return items.map((item, index) => (
-    <span key={`${item}-${index}`}>
-      {index > 0 ? " · " : null}
-      <WithUnits text={item} unitClassName="type-unit-inline" />
-    </span>
-  ));
-}
-
 export function TrainingFallback() {
   return (
-    <div className="mt-10 space-y-3" aria-hidden="true">
-      <div className="h-24 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800" />
-      <div className="h-40 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800" />
+    <div aria-hidden="true">
+      <div className="border-b border-stone-200 pb-8 dark:border-stone-800">
+        <div className="h-3 w-48 animate-pulse rounded bg-stone-200 dark:bg-stone-800" />
+        <div className="mt-4 h-10 w-56 animate-pulse rounded bg-stone-200 dark:bg-stone-800" />
+        <div className="mt-3 h-4 w-80 max-w-full animate-pulse rounded bg-stone-200 dark:bg-stone-800" />
+      </div>
+      <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-36 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800"
+          />
+        ))}
+      </div>
+      <div className="mt-12 grid gap-4 lg:grid-cols-2">
+        <div className="h-80 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800" />
+        <div className="h-80 animate-pulse rounded-lg bg-stone-200 dark:bg-stone-800" />
+      </div>
     </div>
   );
 }
