@@ -67,7 +67,7 @@ export function DistanceChart({
   const tipLeft = showHover
     ? Math.min(100 - halfTip, Math.max(halfTip, centerPct))
     : halfTip;
-  const baselinePct = (BASELINE / VIEW_H) * 100;
+  const belowBaselinePct = ((VIEW_H - BASELINE) / VIEW_H) * 100;
 
   return (
     <div className="td-distance-chart" onPointerLeave={clear}>
@@ -86,11 +86,16 @@ export function DistanceChart({
             className={["td-distance-guide", showHover ? "is-active" : ""]
               .filter(Boolean)
               .join(" ")}
-            style={{ left: `${centerPct}%`, height: `${baselinePct}%` }}
+            style={{
+              left: `${centerPct}%`,
+              top: 0,
+              bottom: `${belowBaselinePct}%`,
+            }}
             aria-hidden="true"
           />
           <svg
             viewBox={`0 0 ${chartW} ${VIEW_H}`}
+            preserveAspectRatio="none"
             className="td-chart h-36 w-full sm:h-44"
             role="img"
             aria-label="Run distance over the last 30 days"

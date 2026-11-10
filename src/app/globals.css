@@ -219,7 +219,6 @@ code.text-code {
 
 .training-theme .td-distance-guide {
   position: absolute;
-  top: 0;
   z-index: 2;
   width: 0;
   transform: translateX(-50%);
