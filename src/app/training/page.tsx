@@ -5,7 +5,7 @@ import { personalBests } from "@/content/personal-bests";
 import { getTrainingSnapshot } from "@/lib/garmin/snapshot";
 
 export const metadata: Metadata = {
-  title: "Training · Charlie Waghmare",
+  title: "Training",
   description: "Training from the last 30 days, and personal bests.",
 };
 
