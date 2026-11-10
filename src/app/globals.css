@@ -15,3 +15,47 @@ code.text-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.92em;
 }
+
+/* Training page only. Other routes never receive these variables. */
+.training-type .type-display {
+  font-family: var(--font-playfair), "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.training-type .type-section {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.training-type .type-metric {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.training-type .type-figure {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.training-type .type-unit {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.62em;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.training-type .type-unit-inline {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.85em;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.training-type code.text-code {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

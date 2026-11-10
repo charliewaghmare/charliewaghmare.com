@@ -13,11 +13,11 @@ export function TrainingView({
 
   return (
     <>
-      <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
+      <p className="mt-3 text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
         {snapshot.rangeLabel}
       </p>
       {snapshot.note ? (
-        <p className="mt-6 text-sm leading-6 text-stone-600 dark:text-stone-400">
+        <p className="mt-6 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
           {snapshot.note}
         </p>
       ) : null}
@@ -26,7 +26,7 @@ export function TrainingView({
         <section className="mt-10" aria-labelledby="metrics-heading">
           <h2
             id="metrics-heading"
-            className="text-sm font-medium text-stone-500 dark:text-stone-400"
+            className="type-section text-[1.3125rem] leading-[1.2] text-stone-500 sm:text-[1.5rem] dark:text-stone-400"
           >
             Now
           </h2>
@@ -36,15 +36,15 @@ export function TrainingView({
                 key={metric.label}
                 className="rounded-lg border border-stone-200 px-3 py-3 dark:border-stone-800"
               >
-                <p className="text-xs text-stone-500 dark:text-stone-400">
+                <p className="text-sm font-medium leading-5 text-stone-500 dark:text-stone-400">
                   {metric.label}
                 </p>
-                <p className="mt-1 text-lg font-medium tracking-tight tabular-nums">
-                  {metric.value}
+                <p className="type-metric mt-1 text-[1.875rem] leading-[1.1] sm:text-[2.125rem]">
+                  <WithUnits text={metric.value} />
                 </p>
                 {metric.detail ? (
-                  <p className="mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">
-                    {metric.detail}
+                  <p className="mt-1 text-[0.8125rem] font-normal leading-5 text-stone-500 dark:text-stone-400">
+                    <WithUnits text={metric.detail} unitClassName="type-unit-inline" />
                   </p>
                 ) : null}
               </article>
@@ -57,12 +57,12 @@ export function TrainingView({
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2
             id="runs-heading"
-            className="text-sm font-medium text-stone-500 dark:text-stone-400"
+            className="type-display text-[1.375rem] leading-[1.15] text-stone-500 sm:text-[1.625rem] dark:text-stone-400"
           >
             Runs
           </h2>
-          <p className="text-sm tabular-nums text-stone-500 dark:text-stone-400">
-            {snapshot.totalsLabel}
+          <p className="type-figure text-[0.8125rem] text-stone-500 dark:text-stone-400">
+            <WithUnits text={snapshot.totalsLabel} unitClassName="type-unit-inline" />
           </p>
         </div>
         <DistanceChart days={snapshot.days} maxKm={maxKm} />
@@ -79,33 +79,35 @@ export function TrainingView({
                       href={activity.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-medium underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
+                      className="text-[0.9375rem] font-semibold leading-snug underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
                     >
                       {activity.name}
                     </a>
                   ) : (
-                    <p className="font-medium">{activity.name}</p>
+                    <p className="text-[0.9375rem] font-semibold leading-snug">
+                      {activity.name}
+                    </p>
                   )}
-                  <p className="text-sm text-stone-500 dark:text-stone-400">
+                  <p className="text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
                     {activity.dateLabel}
                     {activity.run ? "" : ` · ${activity.typeLabel}`}
                   </p>
                 </div>
-                <p className="text-sm tabular-nums text-stone-600 dark:text-stone-300">
-                  {[
-                    activity.distanceLabel,
-                    activity.timeLabel,
-                    activity.paceLabel,
-                    activity.heartRateLabel,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
+                <p className="type-figure text-[0.8125rem] text-stone-600 sm:text-sm dark:text-stone-300">
+                  <StatLine
+                    parts={[
+                      activity.distanceLabel,
+                      activity.timeLabel,
+                      activity.paceLabel,
+                      activity.heartRateLabel,
+                    ]}
+                  />
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm leading-6 text-stone-600 dark:text-stone-400">
+          <p className="mt-4 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
             No runs in this window.
           </p>
         )}
@@ -114,7 +116,7 @@ export function TrainingView({
       <section className="mt-12" aria-labelledby="bests-heading">
         <h2
           id="bests-heading"
-          className="text-sm font-medium text-stone-500 dark:text-stone-400"
+          className="type-display text-[1.375rem] leading-[1.15] text-stone-500 sm:text-[1.625rem] dark:text-stone-400"
         >
           Personal bests
         </h2>
@@ -126,18 +128,20 @@ export function TrainingView({
                 className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
               >
                 <div>
-                  <p className="font-medium">{best.event}</p>
-                  <p className="text-sm text-stone-500 dark:text-stone-400">
+                  <p className="text-[0.9375rem] font-semibold leading-snug">{best.event}</p>
+                  <p className="text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
                     {best.date ? formatBestDate(best.date) : "Date not set"}
                     {best.note ? ` · ${best.note}` : ""}
                   </p>
                 </div>
-                <p className="text-sm font-medium tabular-nums">{best.mark}</p>
+                <p className="type-figure text-[0.9375rem] font-medium">
+                  <WithUnits text={best.mark} unitClassName="type-unit-inline" />
+                </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm leading-6 text-stone-600 dark:text-stone-400">
+          <p className="mt-4 text-sm font-normal leading-6 text-stone-600 dark:text-stone-400">
             None yet. Add one in{" "}
             <code className="text-code">src/content/personal-bests.ts</code>.
           </p>
@@ -184,7 +188,7 @@ function DistanceChart({
           );
         })}
       </svg>
-      <div className="mt-1 flex justify-between text-xs text-stone-500 dark:text-stone-400">
+      <div className="type-figure mt-1 flex justify-between text-xs text-stone-500 dark:text-stone-400">
         <span>{days[0] ? formatDay(days[0].iso, false) : ""}</span>
         <span>
           {days.length > 0 ? formatDay(days[days.length - 1].iso, false) : ""}
@@ -197,6 +201,37 @@ function DistanceChart({
 function formatBestDate(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return formatDay(value);
+}
+
+const UNIT_PATTERN = /(\/km|\s+km|\s+bpm|\s+ms)/g;
+
+function WithUnits({
+  text,
+  unitClassName = "type-unit",
+}: {
+  text: string;
+  unitClassName?: string;
+}) {
+  const parts = text.split(UNIT_PATTERN);
+  return parts.map((part, index) =>
+    part === "/km" || part === " km" || part === " bpm" || part === " ms" ? (
+      <span key={`${part}-${index}`} className={unitClassName}>
+        {part}
+      </span>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    ),
+  );
+}
+
+function StatLine({ parts }: { parts: (string | null)[] }) {
+  const items = parts.filter((part): part is string => Boolean(part));
+  return items.map((item, index) => (
+    <span key={`${item}-${index}`}>
+      {index > 0 ? " · " : null}
+      <WithUnits text={item} unitClassName="type-unit-inline" />
+    </span>
+  ));
 }
 
 export function TrainingFallback() {

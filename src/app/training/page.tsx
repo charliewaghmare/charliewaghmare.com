@@ -17,7 +17,7 @@ export default function TrainingPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-16 sm:py-24">
       <header>
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-sm font-medium text-stone-500 dark:text-stone-400">
           <Link
             href="/"
             className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
@@ -25,8 +25,10 @@ export default function TrainingPage() {
             {site.name}
           </Link>
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight">Training</h1>
-        <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
+        <h1 className="type-display mt-3 text-[2.125rem] leading-[1.1] sm:text-[3.25rem]">
+          Training
+        </h1>
+        <p className="mt-3 text-[0.8125rem] font-medium leading-5 text-stone-500 dark:text-stone-400">
           Last 30 days
         </p>
       </header>
