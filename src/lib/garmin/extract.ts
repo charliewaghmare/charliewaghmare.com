@@ -67,17 +67,6 @@ function round(value: number, digits = 0): string {
   return fixed.endsWith(".0") ? fixed.slice(0, -2) : fixed;
 }
 
-function durationLabel(seconds: number): string {
-  const total = Math.max(0, Math.round(seconds));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  }
-  return `${minutes}:${String(secs).padStart(2, "0")}`;
-}
-
 export function displayNameFrom(profile: unknown): string | null {
   const name = findText(profile, "displayName") ?? findText(profile, "userName");
   return name;
@@ -185,21 +174,6 @@ export function latestSleepScore(payloads: unknown[]): number | null {
   return latest;
 }
 
-export function racePredictions(payload: unknown): {
-  fiveK: number | null;
-  tenK: number | null;
-  half: number | null;
-  marathon: number | null;
-} {
-  return {
-    fiveK: findNumber(payload, "time5K") ?? findNumber(payload, "fiveK"),
-    tenK: findNumber(payload, "time10K") ?? findNumber(payload, "tenK"),
-    half:
-      findNumber(payload, "timeHalfMarathon") ?? findNumber(payload, "halfMarathon"),
-    marathon: findNumber(payload, "timeMarathon") ?? findNumber(payload, "marathon"),
-  };
-}
-
 function balanceDetail(low: number | null, high: number | null, anaerobic: number | null): string | undefined {
   const parts = [
     low !== null ? `Low ${round(low)}` : null,
@@ -218,7 +192,6 @@ export function buildMetrics(input: {
   balance: unknown;
   readiness: unknown;
   sleep: unknown[];
-  predictions: unknown;
 }): Metric[] {
   const statusText = trainingStatus(input.status) ?? trainingStatus(input.dailyStatus);
   const loads = trainingLoads(input.dailyStatus);
@@ -228,7 +201,6 @@ export function buildMetrics(input: {
   const vo2 = vo2Max(input.vo2);
   const readiness = latestReadiness(input.readiness);
   const sleep = latestSleepScore(input.sleep);
-  const races = racePredictions(input.predictions);
 
   const metrics: Metric[] = [
     {
@@ -276,17 +248,6 @@ export function buildMetrics(input: {
     {
       label: "Sleep",
       value: sleep !== null ? round(sleep) : "—",
-    },
-    {
-      label: "Race predictions",
-      value: races.fiveK !== null ? `5K ${durationLabel(races.fiveK)}` : "—",
-      detail: [
-        races.tenK !== null ? `10K ${durationLabel(races.tenK)}` : null,
-        races.half !== null ? `Half ${durationLabel(races.half)}` : null,
-        races.marathon !== null ? `Marathon ${durationLabel(races.marathon)}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || undefined,
     },
   ];
 

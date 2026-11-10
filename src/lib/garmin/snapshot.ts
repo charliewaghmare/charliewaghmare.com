@@ -125,7 +125,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
   const encodedName = displayName ? encodeURIComponent(displayName) : null;
 
   const sleepStart = addDays(end, -27);
-  const [rhr, hrv, vo2, status, dailyStatus, balance, readiness, sleepA, sleepB, predictions] =
+  const [rhr, hrv, vo2, status, dailyStatus, balance, readiness, sleepA, sleepB] =
     await Promise.all([
       encodedName
         ? optional(`/userstats-service/wellness/daily/${encodedName}`, {
@@ -142,9 +142,6 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
       optional(`/metrics-service/metrics/trainingreadiness/${start}/${end}`),
       optional(`/sleep-service/stats/sleep/daily/${start}/${addDays(start, 27)}`),
       optional(`/sleep-service/stats/sleep/daily/${sleepStart}/${end}`),
-      encodedName
-        ? optional(`/metrics-service/metrics/racepredictions/latest/${encodedName}`)
-        : Promise.resolve(null),
     ]);
 
   const metrics = buildMetrics({
@@ -156,7 +153,6 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     balance,
     readiness,
     sleep: [sleepA, sleepB],
-    predictions,
   });
 
   return {
@@ -354,7 +350,6 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
       { label: "HRV", value: "68 ms", detail: "7-day 64 ms" },
       { label: "Readiness", value: "74" },
       { label: "Sleep", value: "81" },
-      { label: "Race predictions", value: "5K 18:40", detail: "10K 39:05 · Half 1:26:20 · Marathon 3:01:00" },
     ],
     days: dayBars(start, samples),
     activities: samples.map(toRow),

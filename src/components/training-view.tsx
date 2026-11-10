@@ -12,7 +12,7 @@ const PRIMARY_LABELS = [
   "Readiness",
 ] as const;
 
-const SECONDARY_WIDE = new Set(["Race predictions", "Training balance"]);
+const SECONDARY_WIDE = new Set(["Training balance"]);
 
 export function TrainingView({
   snapshot,
