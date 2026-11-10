@@ -18,6 +18,15 @@ const BAR_MAX_H = 84;
 const ACCENT = "#50b8ff";
 const HIGHLIGHT = "#8bd7ff";
 
+function slotCenterPct(index: number, chartW: number): number {
+  return ((index * SLOT + BAR_OFFSET + BAR_WIDTH / 2) / chartW) * 100;
+}
+
+function clampTipLeft(centerPct: number, tipWidthPct: number): number {
+  const halfTip = tipWidthPct / 2;
+  return Math.min(100 - halfTip, Math.max(halfTip, centerPct));
+}
+
 export function DistanceChart({
   days,
   maxKm,
@@ -25,7 +34,9 @@ export function DistanceChart({
   days: TrainingSnapshot["days"];
   maxKm: number;
 }) {
-  const [active, setActive] = useState<number | null>(null);
+  const [cursorIndex, setCursorIndex] = useState<number | null>(null);
+  const [lastIndex, setLastIndex] = useState(0);
+  const [label, setLabel] = useState("");
   const [canHover, setCanHover] = useState(false);
   const peak = maxKm > 0 ? maxKm : 1;
   const chartW = Math.max(days.length * SLOT, SLOT);
@@ -38,11 +49,11 @@ export function DistanceChart({
     return () => media.removeEventListener("change", sync);
   }, []);
 
-  const clear = useCallback(() => setActive(null), []);
+  const leaveChart = useCallback(() => setCursorIndex(null), []);
 
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<SVGSVGElement>) => {
-      if (!canHover) return;
+      if (!canHover || days.length === 0) return;
       const rect = event.currentTarget.getBoundingClientRect();
       if (rect.width <= 0) return;
       const ratio = (event.clientX - rect.left) / rect.width;
@@ -50,40 +61,40 @@ export function DistanceChart({
         days.length - 1,
         Math.max(0, Math.floor(ratio * days.length)),
       );
+      setCursorIndex(index);
+      setLastIndex(index);
       const day = days[index];
-      if (day && day.km > 0) setActive(index);
-      else setActive(null);
+      if (day && day.km > 0) {
+        setLabel(`${day.km.toFixed(1)} km`);
+      }
     },
     [canHover, days],
   );
 
-  const activeDay = active !== null ? days[active] : null;
-  const showHover = active !== null && activeDay !== null && activeDay.km > 0;
-  const centerPct = showHover
-    ? ((active * SLOT + BAR_OFFSET + BAR_WIDTH / 2) / chartW) * 100
-    : 0;
+  const indexForPos = cursorIndex ?? lastIndex;
+  const onRunDay =
+    cursorIndex !== null && (days[cursorIndex]?.km ?? 0) > 0;
+  const centerPct = slotCenterPct(indexForPos, chartW);
   const tipWidthPct = ((3 * SLOT) / chartW) * 100;
-  const halfTip = tipWidthPct / 2;
-  const tipLeft = showHover
-    ? Math.min(100 - halfTip, Math.max(halfTip, centerPct))
-    : halfTip;
+  const tipLeft = clampTipLeft(centerPct, tipWidthPct);
   const belowBaselinePct = ((VIEW_H - BASELINE) / VIEW_H) * 100;
+  const highlightIndex = onRunDay ? cursorIndex : null;
 
   return (
-    <div className="td-distance-chart" onPointerLeave={clear}>
+    <div className="td-distance-chart" onPointerLeave={leaveChart}>
       <div className="td-distance-chart-stage">
         <div
-          className={["td-distance-tooltip", showHover ? "is-active" : ""]
+          className={["td-distance-tooltip", onRunDay ? "is-active" : ""]
             .filter(Boolean)
             .join(" ")}
           style={{ left: `${tipLeft}%`, width: `${tipWidthPct}%` }}
           aria-hidden="true"
         >
-          {showHover ? `${activeDay.km.toFixed(1)} km` : "\u00a0"}
+          {label || "\u00a0"}
         </div>
         <div className="td-distance-chart-plot">
           <div
-            className={["td-distance-guide", showHover ? "is-active" : ""]
+            className={["td-distance-guide", onRunDay ? "is-active" : ""]
               .filter(Boolean)
               .join(" ")}
             style={{
@@ -100,7 +111,7 @@ export function DistanceChart({
             role="img"
             aria-label="Run distance over the last 30 days"
             onPointerMove={canHover ? onPointerMove : undefined}
-            onPointerLeave={canHover ? clear : undefined}
+            onPointerLeave={canHover ? leaveChart : undefined}
           >
             {days.map((day, index) => {
               const hasRun = day.km > 0;
@@ -108,7 +119,7 @@ export function DistanceChart({
                 ? Math.max(4, (day.km / peak) * BAR_MAX_H)
                 : 2;
               const y = BASELINE - height;
-              const isActive = showHover && active === index;
+              const isActive = highlightIndex === index;
               return (
                 <rect
                   key={day.iso}
