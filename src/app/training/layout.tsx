@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export default function TrainingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${playfair.variable} ${geistMono.variable} training-type`}>
+    <div className={`${playfair.variable} ${geistMono.variable} training-type training-theme`}>
       {children}
     </div>
   );

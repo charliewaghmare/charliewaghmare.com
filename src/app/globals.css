@@ -34,6 +34,7 @@ code.text-code {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+  color: var(--td-text);
 }
 
 .training-type .type-figure {
@@ -47,6 +48,7 @@ code.text-code {
   font-size: 0.62em;
   font-weight: 500;
   letter-spacing: 0;
+  color: var(--td-muted);
 }
 
 .training-type .type-unit-inline {
@@ -54,8 +56,134 @@ code.text-code {
   font-size: 0.85em;
   font-weight: 400;
   letter-spacing: 0;
+  color: var(--td-muted);
 }
 
 .training-type code.text-code {
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: color-mix(in srgb, var(--td-accent) 12%, transparent);
+  color: var(--td-text);
+}
+
+/* Slate + Electric — scoped to /training */
+.training-theme {
+  --td-bg: #0d1117;
+  --td-surface: #18232e;
+  --td-elevated: #24323d;
+  --td-accent: #50b8ff;
+  --td-accent-hover: #79caff;
+  --td-text: #f0f4f8;
+  --td-muted: #98a7b7;
+  --td-border: #344351;
+  --td-border-subtle: #26343f;
+  --td-radius: 0.75rem;
+  --td-transition: 180ms ease;
+
+  color: var(--td-text);
+  background-color: var(--td-bg);
+  background-image: radial-gradient(
+    ellipse 90% 55% at 50% -10%,
+    color-mix(in srgb, var(--td-accent) 7%, transparent),
+    transparent 70%
+  );
+  min-height: 100dvh;
+}
+
+html:has(.training-theme),
+html:has(.training-theme) body {
+  background-color: var(--td-bg, #0d1117);
+  color: var(--td-text, #f0f4f8);
+}
+
+.training-theme .td-overline {
+  color: var(--td-accent);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.training-theme .td-label {
+  color: var(--td-muted);
+}
+
+.training-theme .td-muted {
+  color: var(--td-muted);
+}
+
+.training-theme .td-text {
+  color: var(--td-text);
+}
+
+.training-theme .td-divider {
+  border-color: var(--td-border-subtle);
+}
+
+.training-theme .td-card {
+  background: var(--td-surface);
+  border: 1px solid var(--td-border);
+  border-radius: var(--td-radius);
+}
+
+.training-theme .td-link {
+  color: var(--td-accent);
+  text-decoration-color: color-mix(in srgb, var(--td-accent) 35%, transparent);
+  text-underline-offset: 0.2em;
+  transition:
+    color var(--td-transition),
+    text-decoration-color var(--td-transition);
+}
+
+.training-theme .td-link:hover {
+  color: var(--td-accent-hover);
+  text-decoration-color: var(--td-accent-hover);
+}
+
+.training-theme .td-link:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 3px;
+}
+
+.training-theme .td-activity-link {
+  color: var(--td-text);
+  text-decoration: none;
+  transition: color var(--td-transition);
+}
+
+.training-theme .td-activity-link:hover {
+  color: var(--td-accent-hover);
+}
+
+.training-theme .td-activity-link:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 3px;
+}
+
+.training-theme .td-activity-row {
+  transition: background-color var(--td-transition);
+}
+
+.training-theme a.td-activity-row:hover,
+.training-theme .td-activity-row:has(a:hover) {
+  background-color: color-mix(in srgb, var(--td-elevated) 55%, transparent);
+}
+
+.training-theme .td-chart {
+  color: var(--td-accent);
+}
+
+.training-theme .td-chart-idle {
+  color: color-mix(in srgb, var(--td-accent) 22%, transparent);
+}
+
+.training-theme .td-skeleton {
+  background: var(--td-elevated);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-theme .td-link,
+  .training-theme .td-activity-link,
+  .training-theme .td-activity-row {
+    transition: none;
+  }
 }
