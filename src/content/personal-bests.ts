@@ -24,4 +24,29 @@ export type PersonalBest = {
   note?: string;
 };
 
-export const personalBests: PersonalBest[] = [];
+export const personalBests: PersonalBest[] = [
+  {
+    event: "10K",
+    mark: "33:35",
+    date: "2026-05-10",
+    note: "",
+  },
+  {
+    event: "5K",
+    mark: "16:00",
+    date: "2026-03-28",
+    note: "",
+  },
+  {
+    event: "1500m",
+    mark: "4:07",
+    date: "2026-07-21",
+    note: "",
+  },
+  {
+    event: "800m",
+    mark: "1:56",
+    date: "2026-07-07",
+    note: "",
+  },
+];
