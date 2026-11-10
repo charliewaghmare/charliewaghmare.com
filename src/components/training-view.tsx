@@ -134,18 +134,12 @@ export function TrainingView({
       ) : null}
 
       <section className="mt-14 border-t border-stone-200 pt-10 dark:border-stone-800" aria-labelledby="runs-heading">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2
-            id="runs-heading"
-            className="type-display text-[1.375rem] leading-[1.15] text-stone-800 sm:text-[1.625rem] dark:text-stone-100"
-          >
-            Runs
-          </h2>
-          <p className="type-figure text-[0.8125rem] text-stone-500 dark:text-stone-400">
-            <WithUnits text={snapshot.totalsLabel} unitClassName="type-unit-inline" />
-          </p>
-        </div>
-        <DistanceChart days={snapshot.days} maxKm={maxKm} compact />
+        <h2
+          id="runs-heading"
+          className="type-display text-[1.375rem] leading-[1.15] text-stone-800 sm:text-[1.625rem] dark:text-stone-100"
+        >
+          Runs
+        </h2>
         {snapshot.activities.length > 0 ? (
           <ul className="mt-6 divide-y divide-stone-200 dark:divide-stone-800">
             {snapshot.activities.map((activity) => (
@@ -417,21 +411,16 @@ function ActivityStat({ label, value }: { label: string; value: string | null })
 function DistanceChart({
   days,
   maxKm,
-  compact = false,
 }: {
   days: TrainingSnapshot["days"];
   maxKm: number;
-  compact?: boolean;
 }) {
   const peak = maxKm > 0 ? maxKm : 1;
   return (
-    <div className={compact ? "mt-5" : undefined}>
+    <div>
       <svg
         viewBox={`0 0 ${days.length * 12} 96`}
-        className={[
-          "w-full text-stone-800 dark:text-stone-200",
-          compact ? "h-24" : "h-36 sm:h-44",
-        ].join(" ")}
+        className="h-36 w-full text-stone-800 sm:h-44 dark:text-stone-200"
         role="img"
         aria-label="Run distance over the last 30 days"
       >
