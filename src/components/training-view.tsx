@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DistanceChart } from "@/components/distance-chart";
 import type { PersonalBest } from "@/content/personal-bests";
 import { site } from "@/content/site";
 import { formatDay } from "@/lib/garmin/format";
@@ -385,53 +386,6 @@ function ActivityStat({ label, value }: { label: string; value: string | null })
       <dd className="type-figure td-text mt-1 text-[0.8125rem] sm:mt-0 sm:text-sm">
         <WithUnits text={value ?? "—"} unitClassName="type-unit-inline" />
       </dd>
-    </div>
-  );
-}
-
-function DistanceChart({
-  days,
-  maxKm,
-}: {
-  days: TrainingSnapshot["days"];
-  maxKm: number;
-}) {
-  const peak = maxKm > 0 ? maxKm : 1;
-  return (
-    <div>
-      <svg
-        viewBox={`0 0 ${days.length * 12} 96`}
-        className="td-chart h-36 w-full sm:h-44"
-        role="img"
-        aria-label="Run distance over the last 30 days"
-      >
-        {days.map((day, index) => {
-          const height = day.km > 0 ? Math.max(4, (day.km / peak) * 84) : 2;
-          const y = 90 - height;
-          return (
-            <g key={day.iso}>
-              <title>
-                {`${day.label}: ${day.km > 0 ? `${day.km.toFixed(1)} km` : "no run"}`}
-              </title>
-              <rect
-                x={index * 12 + 2}
-                y={y}
-                width="8"
-                height={height}
-                rx="1.5"
-                fill="currentColor"
-                opacity={day.km > 0 ? 1 : 0.22}
-              />
-            </g>
-          );
-        })}
-      </svg>
-      <div className="type-figure td-muted mt-1 flex justify-between text-xs">
-        <span>{days[0] ? formatDay(days[0].iso, false) : ""}</span>
-        <span>
-          {days.length > 0 ? formatDay(days[days.length - 1].iso, false) : ""}
-        </span>
-      </div>
     </div>
   );
 }
