@@ -24,9 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} h-full bg-stone-50 antialiased dark:bg-stone-950`}
+      className={`${geistSans.variable} h-full bg-stone-50 antialiased`}
     >
-      <body className="min-h-full bg-stone-50 font-sans text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+      <body className="min-h-full bg-stone-50 font-sans text-stone-900">
         {children}
       </body>
     </html>

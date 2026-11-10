@@ -19,7 +19,7 @@ export function About({ about }: { about: string }) {
           ))}
         </div>
       ) : (
-        <p className="text-base leading-7 text-stone-600 dark:text-stone-400">
+        <p className="text-base leading-7 text-stone-600">
           Add a short bio as <code className="text-code">about</code> in{" "}
           <code className="text-code">src/content/site.ts</code>. It will
           replace this note.

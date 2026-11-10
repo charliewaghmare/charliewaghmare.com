@@ -18,11 +18,11 @@ export default function Home() {
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {site.name}
         </h1>
-        <p className="mt-3 flex items-center gap-x-3 text-sm text-stone-500 dark:text-stone-400">
+        <p className="mt-3 flex items-center gap-x-3 text-sm text-stone-500">
           <span>{site.domain}</span>
           <Link
             href="/training"
-            className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500 dark:decoration-stone-700"
+            className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500"
           >
             Training
           </Link>

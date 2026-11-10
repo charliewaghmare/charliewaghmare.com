@@ -4,6 +4,10 @@
   --font-sans: var(--font-geist-sans);
 }
 
+html {
+  color-scheme: light;
+}
+
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
@@ -87,12 +91,7 @@ code.text-code {
     transparent 70%
   );
   min-height: 100dvh;
-}
-
-html:has(.training-theme),
-html:has(.training-theme) body {
-  background-color: var(--td-bg, #0d1117);
-  color: var(--td-text, #f0f4f8);
+  color-scheme: dark;
 }
 
 .training-theme .td-overline {
