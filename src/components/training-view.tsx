@@ -1,19 +1,13 @@
 import Link from "next/link";
 import { DistanceChart } from "@/components/distance-chart";
+import { MetricExplorer } from "@/components/metric-explorer";
 import type { PersonalBest } from "@/content/personal-bests";
 import { site } from "@/content/site";
 import { formatDay } from "@/lib/garmin/format";
 import type { ActivityRow, TrainingSnapshot } from "@/lib/garmin/snapshot";
 
-const PRIMARY_LABELS = [
-  "Training status",
-  "Training load",
-  "VO2 max",
-  "HRV",
-  "Readiness",
-] as const;
-
-const SECONDARY_WIDE = new Set(["Training balance"]);
+const PRIMARY_IDS = ["status", "load", "vo2", "hrv", "readiness"];
+const SECONDARY_IDS = ["balance", "rhr", "sleep"];
 
 export function TrainingView({
   snapshot,
@@ -23,13 +17,11 @@ export function TrainingView({
   bests: PersonalBest[];
 }) {
   const maxKm = Math.max(...snapshot.days.map((day) => day.km), 0);
-  const byLabel = new Map(snapshot.metrics.map((metric) => [metric.label, metric]));
-  const primary = PRIMARY_LABELS.map((label) => byLabel.get(label)).filter(
-    (metric): metric is NonNullable<typeof metric> => Boolean(metric),
-  );
-  const primarySet = new Set<string>(PRIMARY_LABELS);
-  const secondary = snapshot.metrics.filter((metric) => !primarySet.has(metric.label));
   const latestRun = snapshot.activities[0] ?? null;
+  const dashboardMetrics =
+    snapshot.dashboardMetrics.length > 0
+      ? snapshot.dashboardMetrics
+      : [];
 
   return (
     <>
@@ -66,66 +58,44 @@ export function TrainingView({
         ) : null}
       </header>
 
-      {primary.length > 0 ? (
-        <section className="mt-10" aria-labelledby="primary-metrics-heading">
-          <h2
-            id="primary-metrics-heading"
-            className="type-section td-text text-[1.125rem] leading-tight sm:text-[1.25rem]"
-          >
-            Now
-          </h2>
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            {primary.map((metric) => (
-              <MetricCard
-                key={metric.label}
-                metric={metric}
-                className={
-                  metric.label === "Training status"
-                    ? "col-span-2 md:col-span-1"
-                    : undefined
-                }
+      {dashboardMetrics.length > 0 ? (
+        <MetricExplorer
+          metrics={dashboardMetrics}
+          primaryIds={PRIMARY_IDS}
+          secondaryIds={SECONDARY_IDS}
+          featuredSlot={
+            <section
+              className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-5"
+              aria-labelledby="featured-heading"
+            >
+              <h2 id="featured-heading" className="sr-only">
+                Latest run and training overview
+              </h2>
+              <LatestRunPanel activity={latestRun} />
+              <TrainingOverviewPanel
+                totalsLabel={snapshot.totalsLabel}
+                days={snapshot.days}
+                maxKm={maxKm}
               />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section
-        className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-5"
-        aria-labelledby="featured-heading"
-      >
-        <h2 id="featured-heading" className="sr-only">
-          Latest run and training overview
-        </h2>
-        <LatestRunPanel activity={latestRun} />
-        <TrainingOverviewPanel
-          totalsLabel={snapshot.totalsLabel}
-          days={snapshot.days}
-          maxKm={maxKm}
+            </section>
+          }
         />
-      </section>
-
-      {secondary.length > 0 ? (
-        <section className="mt-12" aria-labelledby="secondary-metrics-heading">
-          <h2
-            id="secondary-metrics-heading"
-            className="type-section td-text text-[1.125rem] leading-tight sm:text-[1.25rem]"
-          >
-            Recovery and targets
+      ) : (
+        <section
+          className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-5"
+          aria-labelledby="featured-heading"
+        >
+          <h2 id="featured-heading" className="sr-only">
+            Latest run and training overview
           </h2>
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {secondary.map((metric) => (
-              <MetricCard
-                key={metric.label}
-                metric={metric}
-                className={
-                  SECONDARY_WIDE.has(metric.label) ? "col-span-2" : undefined
-                }
-              />
-            ))}
-          </div>
+          <LatestRunPanel activity={latestRun} />
+          <TrainingOverviewPanel
+            totalsLabel={snapshot.totalsLabel}
+            days={snapshot.days}
+            maxKm={maxKm}
+          />
         </section>
-      ) : null}
+      )}
 
       <section className="td-divider mt-14 border-t pt-10" aria-labelledby="runs-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -224,52 +194,6 @@ export function TrainingView({
         )}
       </section>
     </>
-  );
-}
-
-function MetricCard({
-  metric,
-  className,
-}: {
-  metric: { label: string; value: string; detail?: string };
-  className?: string;
-}) {
-  const textual = isTextualMetric(metric.value);
-
-  return (
-    <article
-      className={[
-        "td-card flex min-h-[7.25rem] flex-col px-4 py-4",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <p className="td-label text-[0.8125rem] font-medium leading-5">{metric.label}</p>
-      <p
-        className={[
-          "type-metric mt-2 leading-[1.15]",
-          textual
-            ? "text-[1.375rem] sm:text-[1.5rem]"
-            : "text-[1.75rem] sm:text-[1.875rem]",
-        ].join(" ")}
-      >
-        <WithUnits text={metric.value} />
-      </p>
-      {metric.detail ? (
-        <p className="td-muted mt-2 text-[0.8125rem] font-normal leading-5">
-          <WithUnits text={metric.detail} unitClassName="type-unit-inline" />
-        </p>
-      ) : (
-        <p className="mt-2 text-[0.8125rem] leading-5 text-transparent" aria-hidden="true">
-          —
-        </p>
-      )}
-      <div
-        className="td-divider mt-auto min-h-7 border-t border-dashed pt-3"
-        aria-hidden="true"
-      />
-    </article>
   );
 }
 
@@ -393,11 +317,6 @@ function ActivityStat({ label, value }: { label: string; value: string | null })
 function formatBestDate(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return formatDay(value);
-}
-
-function isTextualMetric(value: string): boolean {
-  const letters = value.replace(/[^A-Za-z]/g, "");
-  return letters.length >= 3;
 }
 
 const UNIT_PATTERN = /(\/km|\s+km|\s+bpm|\s+ms)/g;

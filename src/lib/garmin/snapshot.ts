@@ -20,6 +20,18 @@ import {
   vancouverToday,
 } from "@/lib/garmin/format";
 import { pointsFromPayloads, type Point } from "@/lib/garmin/polyline";
+import {
+  buildDashboardMetrics,
+  hrvSeries,
+  readinessSeries,
+  restingHrSeries,
+  sampleHistory,
+  sleepScoreSeries,
+  trainingLoadSeries,
+  trainingStatusCategories,
+  vo2Series,
+  type DashboardMetric,
+} from "@/lib/garmin/series";
 
 export type RunCard = {
   name: string;
@@ -57,6 +69,7 @@ export type TrainingSnapshot = {
   latestRun: RunCard | null;
   totalsLabel: string;
   metrics: Metric[];
+  dashboardMetrics: DashboardMetric[];
   days: DayBar[];
   activities: ActivityRow[];
 };
@@ -124,25 +137,44 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
   const displayName = displayNameFrom(profile);
   const encodedName = displayName ? encodeURIComponent(displayName) : null;
 
+  const historyStart = addDays(end, -364);
   const sleepStart = addDays(end, -27);
-  const [rhr, hrv, vo2, status, dailyStatus, balance, readiness, sleepA, sleepB] =
-    await Promise.all([
-      encodedName
-        ? optional(`/userstats-service/wellness/daily/${encodedName}`, {
-            fromDate: start,
-            untilDate: end,
-            metricId: 60,
-          })
-        : Promise.resolve(null),
-      optional(`/hrv-service/hrv/daily/${start}/${end}`),
-      optional(`/metrics-service/metrics/maxmet/latest/${end}`),
-      optional(`/metrics-service/metrics/trainingstatus/aggregated/${end}`),
-      optional(`/metrics-service/metrics/trainingstatus/daily/${end}`),
-      optional(`/metrics-service/metrics/trainingloadbalance/latest/${end}`),
-      optional(`/metrics-service/metrics/trainingreadiness/${start}/${end}`),
-      optional(`/sleep-service/stats/sleep/daily/${start}/${addDays(start, 27)}`),
-      optional(`/sleep-service/stats/sleep/daily/${sleepStart}/${end}`),
-    ]);
+  const sleepHistoryMid = addDays(historyStart, 180);
+  const [
+    rhr,
+    hrv,
+    vo2,
+    vo2History,
+    status,
+    dailyStatus,
+    statusHistory,
+    balance,
+    readiness,
+    sleepA,
+    sleepB,
+    sleepHistoryA,
+    sleepHistoryB,
+  ] = await Promise.all([
+    encodedName
+      ? optional(`/userstats-service/wellness/daily/${encodedName}`, {
+          fromDate: historyStart,
+          untilDate: end,
+          metricId: 60,
+        })
+      : Promise.resolve(null),
+    optional(`/hrv-service/hrv/daily/${historyStart}/${end}`),
+    optional(`/metrics-service/metrics/maxmet/latest/${end}`),
+    optional(`/metrics-service/metrics/maxmet/${historyStart}/${end}`),
+    optional(`/metrics-service/metrics/trainingstatus/aggregated/${end}`),
+    optional(`/metrics-service/metrics/trainingstatus/daily/${end}`),
+    optional(`/metrics-service/metrics/trainingstatus/daily/${historyStart}/${end}`),
+    optional(`/metrics-service/metrics/trainingloadbalance/latest/${end}`),
+    optional(`/metrics-service/metrics/trainingreadiness/${historyStart}/${end}`),
+    optional(`/sleep-service/stats/sleep/daily/${start}/${addDays(start, 27)}`),
+    optional(`/sleep-service/stats/sleep/daily/${sleepStart}/${end}`),
+    optional(`/sleep-service/stats/sleep/daily/${historyStart}/${sleepHistoryMid}`),
+    optional(`/sleep-service/stats/sleep/daily/${sleepHistoryMid}/${end}`),
+  ]);
 
   const metrics = buildMetrics({
     rhr,
@@ -155,6 +187,25 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     sleep: [sleepA, sleepB],
   });
 
+  // Load and status history share Garmin's training-status daily payload when present.
+  const loadSeries = trainingLoadSeries(statusHistory ?? dailyStatus);
+  const statusSeries = trainingStatusCategories(statusHistory ?? status);
+
+  const dashboardMetrics = buildDashboardMetrics({
+    end,
+    windowLabel: "year",
+    metrics,
+    series: {
+      rhr: restingHrSeries(rhr),
+      hrv: hrvSeries(hrv),
+      readiness: readinessSeries(readiness),
+      sleep: sleepScoreSeries([sleepA, sleepB, sleepHistoryA, sleepHistoryB]),
+      load: loadSeries,
+      vo2: vo2Series(vo2History ?? vo2),
+      status: statusSeries,
+    },
+  });
+
   return {
     source: "garmin",
     note: null,
@@ -162,6 +213,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     latestRun: latest ? toRunCard(latest, points) : null,
     totalsLabel: totalsLabel(activities),
     metrics,
+    dashboardMetrics,
     days: dayBars(start, activities),
     activities: activities.filter((activity) => activity.run).map(toRow),
   };
@@ -318,6 +370,7 @@ function unavailableSnapshot(start: string, end: string, note: string): Training
     latestRun: null,
     totalsLabel: "0 runs · 0.00 km · 0:00",
     metrics: [],
+    dashboardMetrics: [],
     days: dayBars(start, []),
     activities: [],
   };
@@ -335,22 +388,43 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
   ];
   const latest = samples[0];
 
+  const metrics = [
+    { label: "Training status", value: "Productive" },
+    { label: "Training load", value: "412", detail: "Chronic 380 · Ratio 1.08" },
+    { label: "Training balance", value: "Balanced", detail: "Low 140 · High 90 · Anaerobic 36" },
+    { label: "VO2 max", value: "52" },
+    { label: "Resting HR", value: "48 bpm", detail: "30-day avg 49 bpm" },
+    { label: "HRV", value: "68 ms", detail: "7-day 64 ms" },
+    { label: "Readiness", value: "74" },
+    { label: "Sleep", value: "81" },
+  ];
+
   return {
     source: "sample",
     note: "Sample numbers, shown until Garmin is connected.",
     rangeLabel: formatRange(start, end),
     latestRun: toRunCard(latest, sampleLoop()),
     totalsLabel: totalsLabel(samples),
-    metrics: [
-      { label: "Training status", value: "Productive" },
-      { label: "Training load", value: "412", detail: "Chronic 380 · Ratio 1.08" },
-      { label: "Training balance", value: "Balanced", detail: "Low 140 · High 90 · Anaerobic 36" },
-      { label: "VO2 max", value: "52" },
-      { label: "Resting HR", value: "48 bpm", detail: "30-day avg 49 bpm" },
-      { label: "HRV", value: "68 ms", detail: "7-day 64 ms" },
-      { label: "Readiness", value: "74" },
-      { label: "Sleep", value: "81" },
-    ],
+    metrics,
+    dashboardMetrics: buildDashboardMetrics({
+      end,
+      windowLabel: "year",
+      metrics,
+      series: {
+        rhr: sampleHistory(end, 120, 3, 49, 2.5),
+        hrv: sampleHistory(end, 120, 5, 64, 8),
+        readiness: sampleHistory(end, 90, 2, 72, 10),
+        sleep: sampleHistory(end, 90, 4, 78, 9),
+        load: sampleHistory(end, 90, 7, 400, 40),
+        vo2: sampleHistory(end, 24, 1, 51.5, 0.8),
+        status: [
+          { iso: addDays(end, -20), value: "Productive" },
+          { iso: addDays(end, -12), value: "Maintaining" },
+          { iso: addDays(end, -5), value: "Productive" },
+          { iso: end, value: "Productive" },
+        ],
+      },
+    }),
     days: dayBars(start, samples),
     activities: samples.map(toRow),
   };

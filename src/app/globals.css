@@ -238,13 +238,193 @@ code.text-code {
   transition: fill 120ms ease;
 }
 
+.training-theme .td-metric-card {
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.training-theme .td-metric-card:hover,
+.training-theme .td-metric-card:focus-visible {
+  background: var(--td-elevated);
+  border-color: color-mix(in srgb, var(--td-accent) 45%, var(--td-border));
+  outline: none;
+}
+
+.training-theme .td-metric-card:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--td-accent) 55%, transparent);
+}
+
+.training-theme .td-expand-icon {
+  color: var(--td-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.training-theme .td-sparkline {
+  display: block;
+  width: 100%;
+  height: 1.75rem;
+  color: var(--td-accent);
+}
+
+.training-theme .td-sparkline-empty {
+  min-height: 1.75rem;
+}
+
+.training-theme .td-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, #0d1117 72%, transparent);
+  animation: td-modal-fade 200ms ease;
+}
+
+.training-theme .td-modal {
+  width: min(900px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  border: 1px solid var(--td-border);
+  border-radius: 0.9rem;
+  background: var(--td-elevated);
+  padding: 1.5rem;
+  box-shadow: 0 24px 80px color-mix(in srgb, #000 45%, transparent);
+  animation: td-modal-rise 200ms ease;
+}
+
+@media (max-width: 640px) {
+  .training-theme .td-modal-root {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .training-theme .td-modal {
+    width: 100%;
+    max-height: none;
+    min-height: 100%;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+.training-theme .td-modal-close {
+  border: 1px solid var(--td-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--td-text);
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.training-theme .td-modal-close:hover,
+.training-theme .td-modal-close:focus-visible {
+  border-color: var(--td-accent);
+  background: color-mix(in srgb, var(--td-accent) 12%, transparent);
+  outline: none;
+}
+
+.training-theme .td-range-chip {
+  border: 1px solid var(--td-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--td-muted);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.training-theme .td-range-chip.is-active,
+.training-theme .td-range-chip:hover,
+.training-theme .td-range-chip:focus-visible {
+  border-color: color-mix(in srgb, var(--td-accent) 55%, var(--td-border));
+  color: var(--td-text);
+  outline: none;
+}
+
+.training-theme .td-range-chip.is-active {
+  background: color-mix(in srgb, var(--td-accent) 14%, transparent);
+  color: var(--td-accent);
+}
+
+.training-theme .td-range-chip.is-limited {
+  opacity: 0.72;
+}
+
+.training-theme .td-history-grid {
+  stroke: var(--td-border-subtle);
+  stroke-width: 1;
+}
+
+.training-theme .td-history-axis {
+  fill: var(--td-muted);
+  font-size: 10px;
+}
+
+.training-theme .td-history-line {
+  stroke: var(--td-accent);
+  stroke-width: 2;
+}
+
+.training-theme .td-history-point {
+  fill: var(--td-accent);
+}
+
+.training-theme .td-history-tooltip {
+  margin-top: 0.75rem;
+  color: var(--td-text);
+  font-size: 0.8125rem;
+}
+
+@keyframes td-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes td-modal-rise {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .training-theme .td-link,
   .training-theme .td-activity-link,
   .training-theme .td-activity-row,
   .training-theme .td-distance-tooltip,
   .training-theme .td-distance-guide,
-  .training-theme .td-distance-bar {
+  .training-theme .td-distance-bar,
+  .training-theme .td-metric-card,
+  .training-theme .td-modal-close,
+  .training-theme .td-range-chip {
     transition: none;
+  }
+
+  .training-theme .td-modal-root,
+  .training-theme .td-modal {
+    animation: none;
   }
 }
