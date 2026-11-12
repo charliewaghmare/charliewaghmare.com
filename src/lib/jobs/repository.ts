@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { sampleCompanies, sampleJobs } from "@/lib/jobs/demo";
 import { defaultSearchPreferences, isSearchPreferences } from "@/lib/jobs/profile";
 import { anonClient, databaseConfigured, pinConfigured, serviceClient } from "@/lib/jobs/supabase";
@@ -44,6 +45,10 @@ type JobRow = {
   category_tags: string[] | null;
   active: boolean;
   is_sample: boolean;
+  lifecycle_status?: "active" | "stale" | "closed" | null;
+  country?: string | null;
+  scoring_version?: string | null;
+  work_authorization_note?: string | null;
   companies:
     | { id: string; name: string; logo_url: string | null }
     | { id: string; name: string; logo_url: string | null }[]
@@ -72,6 +77,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     ignored: [],
     customSearches: [],
     lastSuccessfulRefresh: null,
+    collection: null,
     databaseConfigured: databaseConfigured(),
     pinConfigured: pinConfigured(),
   };
@@ -79,21 +85,41 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   const reader = anonClient() ?? serviceClient();
   if (!reader) return base;
 
-  const { data, error } = await reader
+  const listed = await reader
     .from("jobs")
-    .select(jobColumns)
+    .select(`${jobColumns}, lifecycle_status, country, scoring_version, work_authorization_note`)
     .eq("active", true)
+    .eq("is_sample", false)
     .order("match_score", { ascending: false });
+  const fallback = listed.error
+    ? await reader.from("jobs").select(jobColumns).eq("active", true).order("match_score", { ascending: false })
+    : listed;
 
-  if (error || !data) {
+  if (fallback.error || !fallback.data) {
     return {
-      ...base,
-      note: "The jobs database did not respond, so sample listings are showing.",
+      ...emptyDatabase("The jobs database did not respond."),
+      databaseConfigured: databaseConfigured(),
+      pinConfigured: pinConfigured(),
+      preferences: unlocked ? defaultSearchPreferences : null,
     };
   }
 
-  const rows = data as JobRow[];
-  if (rows.length === 0) return base;
+  const rows = (fallback.data as JobRow[]).filter((row) => row.is_sample !== true);
+  const companies = await loadCompanies(reader);
+  const collection = await loadCollectionStatus();
+  if (rows.length === 0) {
+    return {
+      ...emptyDatabase(
+        "No stored listings yet. Collection runs daily at 6:00 AM Vancouver time once GitHub Actions secrets are set.",
+      ),
+      companies,
+      collection,
+      lastSuccessfulRefresh: collection?.status === "success" ? collection.completedAt : null,
+      databaseConfigured: databaseConfigured(),
+      pinConfigured: pinConfigured(),
+      preferences: unlocked ? defaultSearchPreferences : null,
+    };
+  }
 
   const statusById = new Map<string, StatusRow>();
   let preferences: SearchPreferences | null = null;
@@ -122,7 +148,8 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
         service
           .from("search_runs")
           .select("completed_at")
-          .eq("status", "success")
+          .eq("run_type", "collection")
+          .in("status", ["success", "partial"])
           .order("completed_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -152,7 +179,8 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     const refreshResult = await service
       .from("search_runs")
       .select("completed_at")
-      .eq("status", "success")
+      .eq("run_type", "collection")
+      .in("status", ["success", "partial"])
       .order("completed_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -160,25 +188,78 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
       (refreshResult.data as { completed_at: string | null } | null)?.completed_at ?? null;
   }
 
-  const { data: companyRows } = await reader
-    .from("companies")
-    .select(
-      "id, name, industry, location, website, careers_url, logo_url, why_interesting, has_verified_opening, is_sample",
-    )
-    .eq("has_verified_opening", false)
-    .order("name");
-
   return {
     source: "database",
     note: null,
     jobs: rows.map((row) => toJob(row, statusById.get(row.id) ?? null, unlocked)),
-    companies: ((companyRows ?? []) as CompanyRow[]).map(toCompany),
+    companies,
     preferences,
     ignored,
     customSearches,
-    lastSuccessfulRefresh,
+    lastSuccessfulRefresh: lastSuccessfulRefresh ?? (collection?.status === "success" ? collection.completedAt : null),
+    collection,
     databaseConfigured: true,
     pinConfigured: pinConfigured(),
+  };
+}
+
+function emptyDatabase(note: string): JobsPageModel {
+  return {
+    source: "database",
+    note,
+    jobs: [],
+    companies: [],
+    preferences: null,
+    ignored: [],
+    customSearches: [],
+    lastSuccessfulRefresh: null,
+    collection: null,
+    databaseConfigured: true,
+    pinConfigured: false,
+  };
+}
+
+async function loadCompanies(reader: SupabaseClient): Promise<CompanyTarget[]> {
+  const extended = await reader
+    .from("companies")
+    .select(
+      "id, name, industry, location, website, careers_url, logo_url, why_interesting, has_verified_opening, is_sample, monitoring_status, last_checked_at, ats_provider",
+    )
+    .eq("is_sample", false)
+    .order("name");
+  const fallback = extended.error
+    ? await reader
+        .from("companies")
+        .select(
+          "id, name, industry, location, website, careers_url, logo_url, why_interesting, has_verified_opening, is_sample",
+        )
+        .order("name")
+    : extended;
+  return ((fallback.data ?? []) as CompanyRow[]).filter((row) => row.is_sample !== true).map(toCompany);
+}
+
+async function loadCollectionStatus(): Promise<JobsPageModel["collection"]> {
+  const service = serviceClient();
+  if (!service) return null;
+  const { data } = await service
+    .from("search_runs")
+    .select("status, started_at, completed_at, error, summary, run_type")
+    .eq("run_type", "collection")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const summary = data.summary as { inserted?: number; updated?: number; errors?: string[] } | null;
+  const detail = data.error
+    ? String(data.error)
+    : summary
+      ? `${summary.inserted ?? 0} new, ${summary.updated ?? 0} updated`
+      : null;
+  return {
+    status: data.status as string,
+    startedAt: data.started_at as string,
+    completedAt: (data.completed_at as string | null) ?? null,
+    detail,
   };
 }
 
@@ -193,6 +274,9 @@ type CompanyRow = {
   why_interesting: string | null;
   has_verified_opening: boolean;
   is_sample: boolean;
+  monitoring_status?: string | null;
+  last_checked_at?: string | null;
+  ats_provider?: string | null;
 };
 
 function toCompany(row: CompanyRow): CompanyTarget {
@@ -207,6 +291,9 @@ function toCompany(row: CompanyRow): CompanyTarget {
     why: row.why_interesting ?? "Saved as a company to watch. No opening is verified.",
     hasVerifiedOpening: row.has_verified_opening,
     isSample: row.is_sample,
+    monitoringStatus: row.monitoring_status ?? null,
+    lastCheckedAt: row.last_checked_at ?? null,
+    atsProvider: row.ats_provider ?? null,
   };
 }
 
@@ -254,6 +341,10 @@ function toJob(row: JobRow, status: StatusRow | null, unlocked: boolean): JobLis
     appliedOn: unlocked ? status?.applied_on ?? null : null,
     stage: unlocked ? status?.stage ?? null : null,
     notes: unlocked ? status?.notes ?? null : null,
+    lifecycleStatus: row.lifecycle_status ?? "active",
+    country: row.country ?? null,
+    scoringVersion: row.scoring_version ?? null,
+    authorizationNote: row.work_authorization_note ?? null,
   };
 }
 

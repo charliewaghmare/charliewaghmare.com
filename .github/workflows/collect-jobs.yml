@@ -1,0 +1,32 @@
+name: Collect jobs
+
+on:
+  schedule:
+    # 13:00 UTC is 6:00 AM Pacific Daylight Time. 14:00 UTC is 6:00 AM Pacific Standard Time.
+    # The collector exits unless the local Vancouver hour is 6, so only one of these runs the import.
+    - cron: "0 13 * * *"
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Existing search run id, when started from the dashboard
+        required: false
+        type: string
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/collect-jobs.ts
+        env:
+          COLLECT_TRIGGER: ${{ github.event_name }}
+          COLLECT_RUN_ID: ${{ inputs.run_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

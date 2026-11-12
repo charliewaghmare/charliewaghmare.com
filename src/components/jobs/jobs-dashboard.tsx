@@ -180,6 +180,15 @@ export function JobsDashboard({
           value={formatTimestamp(model.lastSuccessfulRefresh) ?? "Not yet run"}
         />
       </section>
+      {model.collection ? (
+        <p className="td-muted mt-4 text-sm leading-6">
+          Latest collection: {model.collection.status}
+          {model.collection.completedAt
+            ? ` · ${formatTimestamp(model.collection.completedAt)}`
+            : ` · started ${formatTimestamp(model.collection.startedAt)}`}
+          {model.collection.detail ? ` · ${model.collection.detail}` : ""}
+        </p>
+      ) : null}
 
       <nav className="mt-8 flex flex-wrap gap-2" aria-label="Job sections">
         {(["discover", "companies"] as View[]).map((item) => (
@@ -432,6 +441,8 @@ function CompanyList({ companies }: { companies: JobsPageModel["companies"] }) {
           <p className="mt-3 text-sm leading-6">{company.why}</p>
           <p className="td-muted mt-3 text-[0.8125rem]">
             {company.hasVerifiedOpening ? "Verified opening on file." : "No verified internship on file."}
+            {company.monitoringStatus ? ` ${company.monitoringStatus}.` : ""}
+            {company.lastCheckedAt ? ` Last checked ${formatTimestamp(company.lastCheckedAt)}.` : ""}
             {company.isSample ? " Sample company." : ""}
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm">

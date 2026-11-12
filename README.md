@@ -75,7 +75,33 @@ Apply `supabase/migrations/20261112120000_jobs_phase1.sql` in the Supabase SQL e
 
 PIN attempts are stored in `pin_attempts`. Five failures from one network, or twenty failures overall, lock attempts for 15 minutes.
 
-Edit mode lasts seven days. Lock ends it immediately. Refresh Jobs and custom search notes are wired, but neither runs a collector or an AI search.
+Edit mode lasts seven days. Lock ends it immediately. Custom search notes are stored only. They do not research the web.
+
+### Collection
+
+Daily collection uses GitHub Actions (`.github/workflows/collect-jobs.yml`). It runs at 6:00 AM America/Vancouver. The workflow checks out this repo and runs `npm run collect`.
+
+Add these GitHub Actions secrets on the repository. Use the same Supabase values as Vercel. Do not print them in logs.
+
+| Secret | Purpose |
+| --- | --- |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server key the collector uses to write listings |
+
+Apply `supabase/migrations/20261112200000_jobs_collection.sql` after the Phase 1 migration. Until that runs, the collector cannot save listings.
+
+The active boards are the Greenhouse, Lever, and Ashby identifiers that were checked against the public APIs. Nike, ASICS, Garmin, and Spin Master stay on the watchlist as pending because they do not have one of those verified boards. The collector does not scrape Workday or career HTML.
+
+Manual refresh from the dashboard dispatches that same workflow. It needs two Vercel variables:
+
+| Name | Purpose |
+| --- | --- |
+| `JOBS_GITHUB_DISPATCH_TOKEN` | GitHub token with permission to dispatch workflows on this repo |
+| `JOBS_GITHUB_REPOSITORY` | `charliewaghmare/charliewaghmare.com` |
+
+The button reports that a refresh was requested. It does not wait for new jobs inside the page request. Without the token, the daily Action can still run, and the button says refresh was not started.
+
+When the database is connected, `/jobs` shows stored listings only. Sample cards stay on the page only when Supabase is not configured.
 
 ## Deploy on Vercel
 

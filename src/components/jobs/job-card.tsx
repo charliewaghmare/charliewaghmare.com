@@ -65,6 +65,7 @@ export function JobCard({
               </span>
             ))}
             {job.isSample ? <span className="jd-tag jd-tag-sample">Sample data</span> : null}
+            {job.lifecycleStatus === "stale" ? <span className="jd-tag">Not seen on the last check</span> : null}
             {job.saved ? <span className="jd-tag">Saved</span> : null}
             {job.applied ? <span className="jd-tag">Applied</span> : null}
           </div>

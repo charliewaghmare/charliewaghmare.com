@@ -52,6 +52,10 @@ export type JobListing = {
   appliedOn: string | null;
   stage: ApplicationStage | null;
   notes: string | null;
+  lifecycleStatus?: "active" | "stale" | "closed" | null;
+  country?: string | null;
+  scoringVersion?: string | null;
+  authorizationNote?: string | null;
 };
 
 export type CompanyTarget = {
@@ -65,6 +69,9 @@ export type CompanyTarget = {
   why: string;
   hasVerifiedOpening: boolean;
   isSample: boolean;
+  monitoringStatus?: string | null;
+  lastCheckedAt?: string | null;
+  atsProvider?: string | null;
 };
 
 export type InterestLevel = "high" | "medium";
@@ -115,6 +122,13 @@ export type StoredSearch = {
   status: string;
 };
 
+export type CollectionStatus = {
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  detail: string | null;
+};
+
 export type JobsPageModel = {
   source: "sample" | "database";
   note: string | null;
@@ -124,6 +138,7 @@ export type JobsPageModel = {
   ignored: IgnoredJob[];
   customSearches: StoredSearch[];
   lastSuccessfulRefresh: string | null;
+  collection: CollectionStatus | null;
   databaseConfigured: boolean;
   pinConfigured: boolean;
 };

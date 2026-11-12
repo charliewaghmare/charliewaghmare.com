@@ -1,0 +1,191 @@
+export type WatchCompany = {
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  provider: "greenhouse" | "lever" | "ashby" | null;
+  boardId: string | null;
+  region: "global" | "eu";
+  categories: string[];
+  geographicRelevance: string;
+  enabled: boolean;
+  why: string;
+};
+
+/**
+ * Board IDs below were checked against the public Greenhouse, Lever, or Ashby APIs.
+ * Companies without a verified board stay pending and are not fetched.
+ */
+export const watchlist: WatchCompany[] = [
+  {
+    name: "On",
+    website: "https://www.on.com",
+    careersUrl: "https://job-boards.greenhouse.io/onrunning",
+    provider: "greenhouse",
+    boardId: "onrunning",
+    region: "global",
+    categories: ["Running", "Footwear"],
+    geographicRelevance: "International, sports footwear",
+    enabled: true,
+    why: "Running footwear company with a verified Greenhouse board.",
+  },
+  {
+    name: "WHOOP",
+    website: "https://www.whoop.com",
+    careersUrl: "https://jobs.ashbyhq.com/whoop",
+    provider: "ashby",
+    boardId: "whoop",
+    region: "global",
+    categories: ["Wearables", "Sports technology"],
+    geographicRelevance: "International wearables",
+    enabled: true,
+    why: "Wearable performance technology with a verified Ashby board.",
+  },
+  {
+    name: "Oura",
+    website: "https://ouraring.com",
+    careersUrl: "https://job-boards.greenhouse.io/oura",
+    provider: "greenhouse",
+    boardId: "oura",
+    region: "global",
+    categories: ["Wearables"],
+    geographicRelevance: "International wearables",
+    enabled: true,
+    why: "Wearable health technology with a verified Greenhouse board.",
+  },
+  {
+    name: "Zwift",
+    website: "https://www.zwift.com",
+    careersUrl: "https://www.zwift.com/careers",
+    provider: "greenhouse",
+    boardId: "zwift",
+    region: "global",
+    categories: ["Sports technology"],
+    geographicRelevance: "Sports performance software",
+    enabled: true,
+    why: "Sports performance software with a verified Greenhouse board.",
+  },
+  {
+    name: "Strava",
+    website: "https://www.strava.com",
+    careersUrl: "https://jobs.ashbyhq.com/strava",
+    provider: "ashby",
+    boardId: "strava",
+    region: "global",
+    categories: ["Running", "Sports technology"],
+    geographicRelevance: "Athlete software",
+    enabled: true,
+    why: "Running and athlete software with a verified Ashby board.",
+  },
+  {
+    name: "Wealthsimple",
+    website: "https://www.wealthsimple.com",
+    careersUrl: "https://jobs.ashbyhq.com/wealthsimple",
+    provider: "ashby",
+    boardId: "wealthsimple",
+    region: "global",
+    categories: ["Fintech"],
+    geographicRelevance: "Canada",
+    enabled: true,
+    why: "Canadian fintech company with a verified Ashby board.",
+  },
+  {
+    name: "Cohere",
+    website: "https://cohere.com",
+    careersUrl: "https://jobs.ashbyhq.com/cohere",
+    provider: "ashby",
+    boardId: "cohere",
+    region: "global",
+    categories: ["AI and software"],
+    geographicRelevance: "Canada",
+    enabled: true,
+    why: "Canadian AI company with a verified Ashby board.",
+  },
+  {
+    name: "Hootsuite",
+    website: "https://www.hootsuite.com",
+    careersUrl: "https://job-boards.greenhouse.io/hootsuite",
+    provider: "greenhouse",
+    boardId: "hootsuite",
+    region: "global",
+    categories: ["Software"],
+    geographicRelevance: "Vancouver",
+    enabled: true,
+    why: "Vancouver software company with a verified Greenhouse board.",
+  },
+  {
+    name: "Lucid Motors",
+    website: "https://lucidmotors.com",
+    careersUrl: "https://lucidmotors.com/careers/search",
+    provider: "greenhouse",
+    boardId: "lucidmotors",
+    region: "global",
+    categories: ["Automotive engineering"],
+    geographicRelevance: "Automotive engineering",
+    enabled: true,
+    why: "Automotive engineering company with a verified Greenhouse board.",
+  },
+  {
+    name: "Wealthfront",
+    website: "https://www.wealthfront.com",
+    careersUrl: "https://jobs.lever.co/wealthfront",
+    provider: "lever",
+    boardId: "wealthfront",
+    region: "global",
+    categories: ["Investment management"],
+    geographicRelevance: "United States, investment management",
+    enabled: true,
+    why: "Investment manager with a verified Lever board. Most roles will be filtered unless they fit the student profile.",
+  },
+  {
+    name: "Nike",
+    website: "https://www.nike.com",
+    careersUrl: null,
+    provider: null,
+    boardId: null,
+    region: "global",
+    categories: ["Running", "Footwear"],
+    geographicRelevance: "International",
+    enabled: true,
+    why: "Careers site is Workday, which this collector does not read. Pending a permitted connector.",
+  },
+  {
+    name: "ASICS",
+    website: "https://www.asics.com",
+    careersUrl: null,
+    provider: null,
+    boardId: null,
+    region: "global",
+    categories: ["Running", "Footwear"],
+    geographicRelevance: "International",
+    enabled: true,
+    why: "No verified Greenhouse, Lever, or Ashby board yet.",
+  },
+  {
+    name: "Garmin",
+    website: "https://www.garmin.com",
+    careersUrl: "https://www.garmin.com/en-US/careers/",
+    provider: null,
+    boardId: null,
+    region: "global",
+    categories: ["Wearables"],
+    geographicRelevance: "International",
+    enabled: true,
+    why: "No verified Greenhouse, Lever, or Ashby board yet.",
+  },
+  {
+    name: "Spin Master",
+    website: "https://www.spinmaster.com",
+    careersUrl: null,
+    provider: null,
+    boardId: null,
+    region: "global",
+    categories: ["Product development"],
+    geographicRelevance: "Toronto",
+    enabled: true,
+    why: "No verified Greenhouse, Lever, or Ashby board yet.",
+  },
+];
+
+export function activeBoards(list = watchlist): WatchCompany[] {
+  return list.filter((company) => company.enabled && company.provider && company.boardId);
+}
