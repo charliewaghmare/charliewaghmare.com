@@ -43,6 +43,40 @@ Real data needs an environment variable named `GARMIN_TOKEN`. Its value is the J
 
 Until that variable is set, the pages show a labeled sample. A refresh asks Garmin again about once a minute, so visitors are not each calling Garmin.
 
+## Jobs
+
+[charliewaghmare.com/jobs](https://charliewaghmare.com/jobs) is a personal job discovery board. Phase 1 is the dashboard, PIN edit mode, and Supabase schema. It does not search the web or score live postings. Until Supabase is connected, the page shows labeled sample listings with no application links.
+
+### Environment variables
+
+Set these in Vercel for Production. Do not commit them.
+
+| Name | Purpose |
+| --- | --- |
+| `SUPABASE_URL` | Project URL |
+| `SUPABASE_ANON_KEY` | Public anon key, used server-side for listing reads under RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for edit-mode writes. Never expose it to the browser |
+| `JOBS_EDIT_PIN_HASH` | scrypt hash of the 4-digit PIN |
+| `JOBS_SESSION_SECRET` | Random string of at least 16 characters used to sign the edit cookie |
+
+Create the hash locally. Put the PIN in the environment, not in a file you commit:
+
+```bash
+JOBS_EDIT_PIN=0000 node scripts/hash-jobs-pin.mjs
+```
+
+Replace `0000` with the real PIN for that one command. Copy only the printed hash into `JOBS_EDIT_PIN_HASH`.
+
+Generate a session secret with `openssl rand -base64 32`.
+
+### Database
+
+Apply `supabase/migrations/20261112120000_jobs_phase1.sql` in the Supabase SQL editor. Anonymous visitors can read active jobs and company cards. Saved status, preferences, ignored listings, search notes, and PIN attempts are blocked by row level security. The app checks the edit cookie before using the service role.
+
+PIN attempts are stored in `pin_attempts`. Five failures from one network, or twenty failures overall, lock attempts for 15 minutes.
+
+Edit mode lasts seven days. Lock ends it immediately. Refresh Jobs and custom search notes are wired, but neither runs a collector or an AI search.
+
 ## Deploy on Vercel
 
 1. Push this repository to GitHub.

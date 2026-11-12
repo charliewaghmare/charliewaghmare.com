@@ -26,6 +26,12 @@ export default function Home() {
           >
             Training
           </Link>
+          <Link
+            href="/jobs"
+            className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500"
+          >
+            Jobs
+          </Link>
         </p>
       </header>
 

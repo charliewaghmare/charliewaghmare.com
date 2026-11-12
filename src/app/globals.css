@@ -428,3 +428,137 @@ code.text-code {
     animation: none;
   }
 }
+
+.jobs-theme .jd-tab,
+.jobs-theme .jd-button,
+.jobs-theme .jd-input,
+.jobs-theme .jd-job-card,
+.jobs-theme .jd-expand {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.jobs-theme .jd-tab,
+.jobs-theme .jd-button,
+.jobs-theme .jd-input {
+  border: 1px solid var(--td-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--td-text);
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+}
+
+.jobs-theme .jd-input {
+  display: block;
+  width: 100%;
+  border-radius: 0.7rem;
+  background: var(--td-bg);
+  padding: 0.6rem 0.75rem;
+}
+
+.jobs-theme .jd-tab.is-active,
+.jobs-theme .jd-button-primary {
+  border-color: color-mix(in srgb, var(--td-accent) 55%, var(--td-border));
+  background: color-mix(in srgb, var(--td-accent) 14%, transparent);
+  color: var(--td-accent);
+}
+
+.jobs-theme .jd-tab:hover,
+.jobs-theme .jd-button:hover,
+.jobs-theme .jd-tab:focus-visible,
+.jobs-theme .jd-button:focus-visible,
+.jobs-theme .jd-expand:focus-visible,
+.jobs-theme .jd-input:focus-visible {
+  border-color: var(--td-accent);
+  outline: none;
+}
+
+.jobs-theme .jd-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.jobs-theme .jd-button-quiet {
+  border-color: transparent;
+  color: var(--td-muted);
+}
+
+.jobs-theme .jd-expand {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.jobs-theme .jd-tag {
+  border: 1px solid var(--td-border);
+  border-radius: 999px;
+  color: var(--td-muted);
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.jobs-theme .jd-tag-sample {
+  color: var(--td-accent);
+  border-color: color-mix(in srgb, var(--td-accent) 45%, var(--td-border));
+}
+
+.jobs-theme .jd-score {
+  min-width: 6.5rem;
+  text-align: right;
+}
+
+.jobs-theme .jd-score-exceptional .type-metric,
+.jobs-theme .jd-score-strong .type-metric {
+  color: var(--td-accent);
+}
+
+.jobs-theme .jd-score-potential .type-metric {
+  color: var(--td-text);
+}
+
+.jobs-theme .jd-score-low .type-metric {
+  color: var(--td-muted);
+}
+
+.jobs-theme .jd-logo {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--td-border);
+  border-radius: 0.7rem;
+  background: var(--td-elevated);
+  color: var(--td-accent);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.jobs-theme .jd-logo img,
+.jobs-theme img.jd-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jobs-theme .jd-pin-dialog {
+  width: min(420px, 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jobs-theme .jd-tab,
+  .jobs-theme .jd-button,
+  .jobs-theme .jd-input,
+  .jobs-theme .jd-job-card,
+  .jobs-theme .jd-expand {
+    transition: none;
+  }
+}
