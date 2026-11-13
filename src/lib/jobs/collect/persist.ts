@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decideWrite, nextLifecycle } from "@/lib/jobs/collect/dedupe";
+import { sameRequisition } from "@/lib/jobs/research/ats";
 import { assessPosting, SCORING_VERSION, type Assessment, type CollectedPosting } from "@/lib/jobs/collect/rules";
 import { canonicalUrl } from "@/lib/jobs/collect/text";
 import type { WatchCompany } from "@/lib/jobs/collect/watchlist";
@@ -11,6 +12,18 @@ export type SourceResult = {
   postings: CollectedPosting[];
 };
 
+export type SourceTally = {
+  name: string;
+  provider: string;
+  fetched: number;
+  eligible: number;
+  ineligible: number;
+  uncertain: number;
+  withheldEligible: number;
+  aboveThreshold: number;
+  belowThreshold: number;
+};
+
 export type RunSummary = {
   sourcesChecked: number;
   sourcesSucceeded: number;
@@ -20,16 +33,20 @@ export type RunSummary = {
   eligibleStudent: number;
   ineligibleProfessional: number;
   uncertain: number;
+  withheldEligible: number;
   relevant: number;
   belowThreshold: number;
   inserted: number;
   updated: number;
+  duplicates: number;
+  suppressed: number;
   stale: number;
   closed: number;
   reviewed: number;
   retained: number;
   storedExcluded: number;
   storedQuarantined: number;
+  bySource: SourceTally[];
   examples: string[];
   errors: string[];
 };
@@ -48,16 +65,20 @@ export async function persistCollection(
     eligibleStudent: 0,
     ineligibleProfessional: 0,
     uncertain: 0,
+    withheldEligible: 0,
     relevant: 0,
     belowThreshold: 0,
     inserted: 0,
     updated: 0,
+    duplicates: 0,
+    suppressed: 0,
     stale: 0,
     closed: 0,
     reviewed: 0,
     retained: 0,
     storedExcluded: 0,
     storedQuarantined: 0,
+    bySource: [],
     examples: [],
     errors: results.flatMap((result) => (result.error ? [result.error] : [])),
   };
@@ -71,9 +92,12 @@ export async function persistCollection(
     const companyId = await companyIdByName(db, result.company.name);
     if (!companyId || !result.ok) continue;
     const seen = new Set<string>();
+    const tally = emptyTally(result.company.name, result.company.provider ?? "unknown");
+    tally.fetched = result.postings.length;
     for (const posting of result.postings) {
       const assessment = assessPosting(posting);
       countAssessment(summary, assessment);
+      noteTally(tally, assessment);
       if (!assessment.publish) {
         const withheld = await withholdJob(db, posting, assessment);
         if (withheld) summary.updated += 1;
@@ -84,9 +108,12 @@ export async function persistCollection(
       }
       const outcome = await upsertJob(db, companyId, posting, assessment);
       if (outcome === "inserted") summary.inserted += 1;
-      if (outcome === "updated") summary.updated += 1;
+      if (outcome === "duplicate") summary.duplicates += 1;
+      if (outcome === "skipped") summary.suppressed += 1;
+      if (outcome === "updated" || outcome === "duplicate") summary.updated += 1;
       if (outcome !== "skipped") seen.add(posting.sourceId);
     }
+    summary.bySource.push(tally);
     const lifecycle = await markMissing(db, result.company, companyId, seen);
     summary.stale += lifecycle.stale;
     summary.closed += lifecycle.closed;
@@ -109,8 +136,35 @@ function countAssessment(summary: RunSummary, assessment: Assessment): void {
     return;
   }
   summary.excluded += 1;
-  if (assessment.status === "uncertain") summary.uncertain += 1;
+  if (assessment.status === "eligible_student_role") summary.withheldEligible += 1;
+  else if (assessment.status === "uncertain") summary.uncertain += 1;
   else if (assessment.status === "ineligible_professional_role") summary.ineligibleProfessional += 1;
+}
+
+function emptyTally(name: string, provider: string): SourceTally {
+  return {
+    name,
+    provider,
+    fetched: 0,
+    eligible: 0,
+    ineligible: 0,
+    uncertain: 0,
+    withheldEligible: 0,
+    aboveThreshold: 0,
+    belowThreshold: 0,
+  };
+}
+
+function noteTally(tally: SourceTally, assessment: Assessment): void {
+  if (assessment.publish) {
+    tally.eligible += 1;
+    if (assessment.score >= 50) tally.aboveThreshold += 1;
+    else tally.belowThreshold += 1;
+    return;
+  }
+  if (assessment.status === "eligible_student_role") tally.withheldEligible += 1;
+  else if (assessment.status === "uncertain") tally.uncertain += 1;
+  else if (assessment.status === "ineligible_professional_role") tally.ineligible += 1;
 }
 
 async function companyIdByName(db: SupabaseClient, name: string): Promise<string | null> {
@@ -159,17 +213,17 @@ async function upsertJob(
   companyId: string,
   posting: CollectedPosting,
   scored: Assessment,
-): Promise<"inserted" | "updated" | "skipped"> {
+): Promise<"inserted" | "updated" | "duplicate" | "skipped"> {
   const sourceUrl = canonicalUrl(posting.sourceUrl);
-  const [{ data: byIdentity }, { data: byUrl }, { data: suppressed }] = await Promise.all([
+  const [{ data: byIdentity }, { data: byUrl }, { data: suppressed }, { data: siblings }] = await Promise.all([
     db
       .from("jobs")
-      .select("id, discovered_at")
+      .select("id, discovered_at, source")
       .eq("source", posting.provider)
       .eq("source_id", posting.sourceId)
       .maybeSingle(),
     sourceUrl
-      ? db.from("jobs").select("id, discovered_at").eq("source_url", sourceUrl).maybeSingle()
+      ? db.from("jobs").select("id, discovered_at, source").eq("source_url", sourceUrl).maybeSingle()
       : Promise.resolve({ data: null }),
     db
       .from("job_suppressions")
@@ -177,15 +231,24 @@ async function upsertJob(
       .eq("source", posting.provider)
       .eq("source_id", posting.sourceId)
       .maybeSingle(),
+    db.from("jobs").select("id, title, location, source").eq("company_id", companyId).limit(80),
   ]);
+  const secondary = (siblings ?? []).find(
+    (row) =>
+      row.id !== byIdentity?.id &&
+      sameRequisition(
+        { company: posting.companyName, title: posting.title, location: posting.location },
+        { company: posting.companyName, title: row.title, location: row.location },
+      ),
+  );
   const decision = decideWrite({
-    existingByIdentity: Boolean(byIdentity),
+    existingByIdentity: Boolean(byIdentity || secondary),
     existingByUrl: Boolean(byUrl),
     suppressed: Boolean(suppressed),
   });
   if (decision.action === "skip") return "skipped";
   const now = new Date().toISOString();
-  const existing = byIdentity ?? byUrl;
+  const existing = byIdentity ?? byUrl ?? secondary;
   const row = {
     source: posting.provider,
     source_id: posting.sourceId,
@@ -223,7 +286,7 @@ async function upsertJob(
   if (decision.action === "update" && existing?.id) {
     const { error } = await db.from("jobs").update(row).eq("id", existing.id);
     if (error) throw new Error(error.message);
-    return "updated";
+    return byIdentity ? "updated" : "duplicate";
   }
   const { error } = await db.from("jobs").insert({ ...row, discovered_at: now });
   if (error) throw new Error(error.message);
@@ -333,9 +396,15 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
     for (const row of data) {
       counts.reviewed += 1;
       const source =
-        row.source === "lever" || row.source === "ashby" || row.source === "greenhouse" || row.source === "web"
+        row.source === "lever" ||
+        row.source === "ashby" ||
+        row.source === "greenhouse" ||
+        row.source === "smartrecruiters" ||
+        row.source === "workable" ||
+        row.source === "workday" ||
+        row.source === "web"
           ? row.source
-          : "greenhouse";
+          : "web";
       const assessment = assessPosting({
         provider: source,
         sourceId: row.source_id ?? row.id,

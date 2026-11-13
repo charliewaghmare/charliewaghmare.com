@@ -172,6 +172,99 @@ test("research schedule is Tuesday and Friday morning in Vancouver", () => {
   assert.equal(shouldRunResearch(new Date("2026-11-12T14:00:00Z"), "workflow_dispatch"), true);
 });
 
+test("coverage sends the next search toward the thinner high-interest track", () => {
+  const planned = planResearch({
+    now: new Date("2026-11-10T18:00:00Z"),
+    history: [],
+    coverage: { software: 12, mechanical: 4, running: 3, materials: 2, finance: 2, regional: 1, motorsports: 0 },
+  });
+  assert.equal(planned[0]?.track, "motorsports");
+  const again = planResearch({
+    now: new Date("2026-11-10T18:00:00Z"),
+    history: planned.map((item) => item.query),
+  });
+  assert.equal(again.some((item) => planned.some((existing) => existing.query === item.query)), false);
+});
+
+test("a long company note is clipped instead of discarding the batch", () => {
+  const findings = parseFindings(
+    JSON.stringify({
+      jobs: [],
+      companies: [
+        {
+          name: "Harbour Lab",
+          website: "https://example.com",
+          careersUrl: null,
+          industry: "Materials",
+          location: "Toronto",
+          why: "m".repeat(900),
+          atsProvider: "not-a-provider",
+          atsBoardId: null,
+        },
+      ],
+    }),
+  );
+  assert.equal(findings.companies[0]?.why.length, 400);
+  assert.equal(findings.companies[0]?.atsProvider, null);
+});
+
+test("spend cap stops a second model call", async () => {
+  let calls = 0;
+  const summary = await runResearch({
+    trigger: "workflow_dispatch",
+    dryRun: true,
+    now: new Date("2026-11-10T18:00:00Z"),
+    history: [],
+    db: null,
+    search: async () => {
+      calls += 1;
+      return {
+        usage: { inputTokens: 9_000_000, outputTokens: 1000, searchCalls: 2 },
+        findings: { jobs: [], companies: [] },
+      };
+    },
+  });
+  assert.equal(calls, 1);
+  assert.ok(summary);
+  assert.ok((summary.estimatedUsd ?? 0) > 0.75);
+});
+
+test("obvious professional titles are screened before a page fetch", async () => {
+  let fetches = 0;
+  const summary = await runResearch({
+    trigger: "workflow_dispatch",
+    dryRun: true,
+    now: new Date("2026-11-10T18:00:00Z"),
+    history: [],
+    db: null,
+    fetchImpl: (async () => {
+      fetches += 1;
+      return new Response("no", { status: 404 });
+    }) as typeof fetch,
+    search: async () => ({
+      usage: { inputTokens: 10, outputTokens: 10, searchCalls: 1 },
+      findings: {
+        jobs: [
+          {
+            title: "Senior mechanical engineer",
+            employer: "Northline",
+            location: "Toronto",
+            country: "Canada",
+            applicationUrl: "https://example.com/jobs/senior",
+            sourceUrl: "https://example.com/jobs/senior",
+            evidenceQuote: "This internship is open to students currently enrolled in university.",
+            employmentType: null,
+          },
+        ],
+        companies: [],
+      },
+    }),
+  });
+  assert.equal(fetches, 0);
+  assert.equal(summary?.screenedOut, 4);
+  assert.equal(summary?.verified, 0);
+});
+
 test("materials engineering is high interest", () => {
   const materials = assessPosting({
     provider: "web",

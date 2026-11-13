@@ -26,7 +26,7 @@ export const researchFindingsSchema = z.object({
         industry: z.string().max(80),
         location: z.string().max(120).nullable(),
         why: z.string().max(400),
-        atsProvider: z.enum(["greenhouse", "lever", "ashby"]).nullable(),
+        atsProvider: z.enum(["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "workday"]).nullable(),
         atsBoardId: z.string().max(80).nullable(),
       }),
     )
@@ -41,7 +41,68 @@ export function parseFindings(text: string): ResearchFindings {
   if (start < 0 || end <= start) {
     throw new Error("Research response did not contain JSON.");
   }
-  return researchFindingsSchema.parse(JSON.parse(text.slice(start, end + 1)));
+  const parsed = JSON.parse(text.slice(start, end + 1)) as { jobs?: unknown; companies?: unknown };
+  return researchFindingsSchema.parse({
+    jobs: sanitizeJobs(parsed.jobs),
+    companies: sanitizeCompanies(parsed.companies),
+  });
+}
+
+function sanitizeJobs(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 8).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    for (const key of ["applicationUrl", "sourceUrl"]) {
+      if (typeof row[key] === "string" && row[key] && !String(row[key]).startsWith("https://")) {
+        throw new Error("HTTPS required");
+      }
+    }
+    const quote = clip(row.evidenceQuote, 500);
+    if (quote.length < 24) return [];
+    return [
+      {
+        ...row,
+        title: clip(row.title, 200),
+        employer: clip(row.employer, 160),
+        location: clipOrNull(row.location, 200),
+        country: clipOrNull(row.country, 80),
+        evidenceQuote: quote,
+        employmentType: clipOrNull(row.employmentType, 80),
+      },
+    ];
+  });
+}
+
+function sanitizeCompanies(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  const providers = new Set(["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "workday"]);
+  return value.slice(0, 6).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const provider = typeof row.atsProvider === "string" && providers.has(row.atsProvider) ? row.atsProvider : null;
+    return [
+      {
+        ...row,
+        name: clip(row.name, 160),
+        industry: clip(row.industry, 80),
+        location: clipOrNull(row.location, 120),
+        why: clip(row.why, 400),
+        atsProvider: provider,
+        atsBoardId: clipOrNull(row.atsBoardId, 120),
+      },
+    ];
+  });
+}
+
+function clip(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function clipOrNull(value: unknown, max: number): string | null {
+  if (value == null) return null;
+  const clipped = clip(value, max);
+  return clipped || null;
 }
 
 export function outputText(payload: unknown): string {

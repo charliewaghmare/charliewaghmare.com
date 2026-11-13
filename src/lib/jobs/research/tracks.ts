@@ -1,82 +1,90 @@
 export type ResearchTrack = {
   id: string;
   label: string;
+  interest: "high" | "medium";
   queries: string[];
 };
 
-export const RESEARCH_TRACKS: ResearchTrack[] = [
+const SEASONS = ["Summer 2027", "Fall 2027", "Winter 2028"];
+
+type TrackSeed = {
+  id: string;
+  label: string;
+  interest: "high" | "medium";
+  roles: string[];
+  places: string[];
+};
+
+const SEEDS: TrackSeed[] = [
   {
     id: "mechanical",
     label: "Mechanical and product development",
-    queries: [
-      "mechanical design internship Summer 2027 Canada",
-      "product development co-op Toronto 2027",
-      "prototype engineering internship Vancouver student",
-      "CAD testing internship consumer product 2027",
-      "mechanical R&D summer student Ontario",
-    ],
+    interest: "high",
+    roles: ["mechanical engineering", "product development", "prototype design", "CAD design"],
+    places: ["Toronto", "Vancouver", "Ontario", "Canada"],
   },
   {
     id: "motorsports",
-    label: "Motorsports and racing",
-    queries: [
-      "motorsport engineering internship 2027",
-      "vehicle dynamics student placement internship",
-      "racing composites internship student",
-      "motorsport telemetry internship co-op",
-      "NASCAR IndyCar engineering internship student",
-    ],
+    label: "Motorsports and automotive engineering",
+    interest: "high",
+    roles: ["motorsport engineering", "vehicle dynamics", "automotive engineering", "composites"],
+    places: ["Canada", "United States", "United Kingdom", "Ontario"],
   },
   {
     id: "running",
     label: "Running and sports technology",
-    queries: [
-      "running footwear development internship 2027",
-      "sports equipment design co-op student",
-      "wearable biomechanics internship",
-      "athletic footwear materials intern student",
-      "sports technology startup internship Canada",
-    ],
+    interest: "high",
+    roles: ["footwear development", "sports equipment design", "wearable technology", "biomechanics"],
+    places: ["Canada", "Vancouver", "Toronto", "remote Canada"],
   },
   {
     id: "materials",
     label: "Materials and manufacturing",
-    queries: [
-      "materials engineering internship 2027 Canada",
-      "composites development co-op student",
-      "manufacturing engineering summer student Ontario",
-      "materials testing laboratory internship Vancouver",
-      "metallurgy internship undergraduate",
-    ],
+    interest: "high",
+    roles: ["materials engineering", "composites manufacturing", "metallurgy", "manufacturing engineering"],
+    places: ["Ontario", "Vancouver", "Canada", "Toronto"],
   },
   {
     id: "software",
     label: "AI, software and automation",
-    queries: [
-      "software engineering co-op Vancouver Winter 2027",
-      "machine learning internship undergraduate Canada 2027",
-      "robotics software internship student",
-      "AI engineering internship Toronto student",
-    ],
+    interest: "medium",
+    roles: ["software engineering", "machine learning", "robotics software", "automation"],
+    places: ["Vancouver", "Toronto", "Canada", "remote Canada"],
   },
   {
     id: "finance",
-    label: "Finance",
-    queries: [
-      "investment analyst internship engineering students Toronto 2027",
-      "fintech co-op undergraduate Canada",
-      "quantitative research internship student Canada",
-      "corporate finance summer student Vancouver",
-    ],
+    label: "Finance and financial technology",
+    interest: "medium",
+    roles: ["finance", "fintech", "quantitative research", "investment analyst"],
+    places: ["Toronto", "Vancouver", "Canada", "Ontario"],
   },
   {
     id: "regional",
     label: "Regional employers",
-    queries: [
-      "engineering summer student Collingwood Ontario",
-      "manufacturing co-op Georgian Bay",
-      "mechanical internship Vancouver Lower Mainland 2027",
-      "product design internship Toronto GTA student",
-    ],
+    interest: "medium",
+    roles: ["engineering", "manufacturing", "product design", "mechanical engineering"],
+    places: ["Collingwood Ontario", "Georgian Bay", "Vancouver Lower Mainland", "Toronto GTA"],
   },
 ];
+
+const TERMS = ["internship", "co-op", "summer student", "industrial placement", "undergraduate"];
+
+export function queriesForTrack(seed: TrackSeed): string[] {
+  const queries: string[] = [];
+  seed.roles.forEach((role, index) => {
+    const season = SEASONS[index % SEASONS.length];
+    const place = seed.places[index % seed.places.length];
+    const term = TERMS[index % TERMS.length];
+    queries.push(`${role} ${term} ${season} ${place}`);
+  });
+  queries.push(`${seed.roles[0]} co-operative education ${SEASONS[0]} ${seed.places[0]}`);
+  queries.push(`${seed.roles[0]} university student ${SEASONS[2]} ${seed.places[1] ?? seed.places[0]}`);
+  return [...new Set(queries.map((query) => query.replace(/\s+/g, " ").trim()))];
+}
+
+export const RESEARCH_TRACKS: ResearchTrack[] = SEEDS.map((seed) => ({
+  id: seed.id,
+  label: seed.label,
+  interest: seed.interest,
+  queries: queriesForTrack(seed),
+}));

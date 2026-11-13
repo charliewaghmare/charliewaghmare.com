@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { detectAts, sameCompany, sameRequisition } from "@/lib/jobs/research/ats";
-import { addUsage, estimateResearchUsd, RESEARCH_BUDGET, type Usage } from "@/lib/jobs/research/budget";
+import { addUsage, estimateResearchUsd, researchLimits, type Usage } from "@/lib/jobs/research/budget";
 import { searchOpenAI, DEFAULT_RESEARCH_MODEL } from "@/lib/jobs/research/openai";
 import { planResearch } from "@/lib/jobs/research/plan";
+import { screenCandidate } from "@/lib/jobs/research/screen";
 import type { ResearchFindings } from "@/lib/jobs/research/schema";
 import { fetchPublicPage, pageSupportsPosting } from "@/lib/jobs/research/verify";
 import { shouldRunResearch } from "@/lib/jobs/collect/schedule";
@@ -24,6 +25,7 @@ export type ResearchSummary = {
   duplicates: number;
   companiesDiscovered: number;
   companiesAdded: number;
+  screenedOut: number;
   boardsEnabled: number;
   errors: string[];
   estimatedUsd: number | null;
@@ -48,17 +50,33 @@ export async function runResearch(options: {
     return null;
   }
   const started = Date.now();
+  const limits = researchLimits();
   const summary = emptySummary();
   const db = options.db === undefined ? (options.dryRun ? null : client()) : options.db;
   const history = options.history ?? (db ? await loadHistory(db) : []);
-  const planned = planResearch({ history, focus: options.query, now });
+  const coverage = db ? await loadCoverageCounts(db) : {};
+  const knownCompanies = db ? await loadKnownCompanies(db) : [];
+  const planned = planResearch({
+    history,
+    focus: options.query,
+    now,
+    coverage,
+    tracksPerRun: limits.tracksPerRun,
+    queriesPerTrack: limits.queriesPerTrack,
+  });
   const search = options.search ?? defaultSearch;
   const fetchImpl = options.fetchImpl ?? fetch;
+  const model = process.env.OPENAI_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
   let searches = 0;
   let searchFailures = 0;
   for (const item of planned) {
-    if (Date.now() - started > RESEARCH_BUDGET.maxDurationMs) break;
-    if (searches >= RESEARCH_BUDGET.maxSearchCalls) break;
+    if (Date.now() - started > limits.maxDurationMs) break;
+    if (searches >= limits.maxSearchCalls) break;
+    const spent = estimateResearchUsd(model, summary.usage);
+    if (spent != null && spent >= limits.maxSpendUsd && searches > 0) {
+      summary.errors.push(`Stopped at about $${spent}, under the $${limits.maxSpendUsd} run cap.`);
+      break;
+    }
     searches += 1;
     summary.queries += 1;
     try {
@@ -66,14 +84,14 @@ export async function runResearch(options: {
       summary.usage = addUsage(summary.usage, result.usage);
       summary.searchCalls += result.usage.searchCalls;
       summary.candidates += result.findings.jobs.length;
-      await ingestFindings(db, result.findings, summary, fetchImpl, options.dryRun === true);
+      await ingestFindings(db, result.findings, summary, fetchImpl, options.dryRun === true, knownCompanies, limits.maxCandidates);
       if (db && !options.dryRun) await recordQuery(db, item, result.findings.jobs.length);
     } catch (error) {
       searchFailures += 1;
       summary.errors.push(error instanceof Error ? error.message : "Research query failed.");
     }
   }
-  summary.estimatedUsd = estimateResearchUsd(process.env.OPENAI_RESEARCH_MODEL ?? DEFAULT_RESEARCH_MODEL, summary.usage);
+  summary.estimatedUsd = estimateResearchUsd(model, summary.usage);
   const status =
     summary.queries === 0 || searchFailures === summary.queries
       ? "failed"
@@ -90,9 +108,18 @@ async function ingestFindings(
   summary: ResearchSummary,
   fetchImpl: typeof fetch,
   dryRun: boolean,
+  knownCompanies: { name: string; website: string | null }[],
+  maxCandidates: number,
 ): Promise<void> {
+  const seenUrls = new Set<string>();
   for (const job of findings.jobs) {
-    if (summary.verified >= RESEARCH_BUDGET.maxCandidates) break;
+    if (summary.verified >= maxCandidates) break;
+    const screened = screenCandidate(job, seenUrls);
+    if (!screened.ok) {
+      summary.screenedOut += 1;
+      summary.errors.push(`${job.employer}: ${screened.reason}`);
+      continue;
+    }
     const checked = await verifyJob(job, fetchImpl);
     if (!checked.ok) {
       summary.errors.push(`${job.employer}: ${checked.reason}`);
@@ -114,8 +141,12 @@ async function ingestFindings(
     if (outcome === "updated") summary.updated += 1;
   }
   for (const company of findings.companies) {
-    if (summary.companiesAdded >= RESEARCH_BUDGET.maxCompanyAdds) break;
+    if (summary.companiesAdded >= researchLimits().maxCompanyAdds) break;
     summary.companiesDiscovered += 1;
+    if (knownCompanies.some((known) => sameCompany(known, company))) {
+      summary.errors.push(`${company.name}: Already monitored, so company research was reused.`);
+      continue;
+    }
     const verified = await verifyCompany(company, fetchImpl);
     if (!verified.ok) {
       summary.errors.push(`${company.name}: ${verified.reason}`);
@@ -197,18 +228,17 @@ async function verifyCompany(
 }
 
 async function boardResponds(board: { provider: string; boardId: string }, fetchImpl: typeof fetch): Promise<boolean> {
-  const url =
-    board.provider === "greenhouse"
-      ? `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board.boardId)}/jobs`
-      : board.provider === "lever"
-        ? `https://api.lever.co/v0/postings/${encodeURIComponent(board.boardId)}?mode=json&limit=1`
-        : `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(board.boardId)}`;
+  if (board.provider === "workday") return workdayResponds(board.boardId, fetchImpl);
+  const url = boardProbeUrl(board);
+  if (!url) return false;
   try {
     const response = await fetchImpl(url, { headers: { accept: "application/json", "user-agent": "charliewaghmare-jobs/1.0" } });
     if (!response.ok) return false;
     const payload = await response.json();
     if (Array.isArray(payload)) return true;
-    return Boolean(payload && typeof payload === "object" && Array.isArray((payload as { jobs?: unknown }).jobs));
+    if (!payload || typeof payload !== "object") return false;
+    const record = payload as { jobs?: unknown; content?: unknown; results?: unknown; totalFound?: unknown };
+    return Array.isArray(record.jobs) || Array.isArray(record.content) || Array.isArray(record.results) || typeof record.totalFound === "number";
   } catch {
     return false;
   }
@@ -363,6 +393,7 @@ function emptySummary(): ResearchSummary {
     duplicates: 0,
     companiesDiscovered: 0,
     companiesAdded: 0,
+    screenedOut: 0,
     boardsEnabled: 0,
     errors: [],
     estimatedUsd: null,
@@ -381,6 +412,74 @@ function defaultSearch(query: string, track: string) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
   return searchOpenAI({ query, track, apiKey, model: process.env.OPENAI_RESEARCH_MODEL });
+}
+
+async function workdayResponds(boardId: string, fetchImpl: typeof fetch): Promise<boolean> {
+  const [host, tenant, site] = boardId.split("/");
+  if (!host || !tenant || !site) return false;
+  try {
+    const response = await fetchImpl(`https://${host}/wday/cxs/${encodeURIComponent(tenant)}/${encodeURIComponent(site)}/jobs`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "user-agent": "charliewaghmare-jobs/1.0",
+      },
+      body: JSON.stringify({ appliedFacets: {}, limit: 1, offset: 0, searchText: "internship" }),
+    });
+    if (!response.ok) return false;
+    const payload = (await response.json()) as { total?: unknown; jobPostings?: unknown };
+    return typeof payload.total === "number" || Array.isArray(payload.jobPostings);
+  } catch {
+    return false;
+  }
+}
+
+function boardProbeUrl(board: { provider: string; boardId: string }): string | null {
+  if (board.provider === "greenhouse") {
+    return `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board.boardId)}/jobs`;
+  }
+  if (board.provider === "lever") {
+    return `https://api.lever.co/v0/postings/${encodeURIComponent(board.boardId)}?mode=json&limit=1`;
+  }
+  if (board.provider === "ashby") {
+    return `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(board.boardId)}`;
+  }
+  if (board.provider === "smartrecruiters") {
+    return `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(board.boardId)}/postings?limit=1`;
+  }
+  if (board.provider === "workable") {
+    return `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(board.boardId)}`;
+  }
+  return null;
+}
+
+async function loadCoverageCounts(db: SupabaseClient): Promise<Record<string, number>> {
+  const { data } = await db.from("jobs").select("category_tags").eq("active", true).eq("is_sample", false).limit(400);
+  const counts: Record<string, number> = {
+    mechanical: 0,
+    motorsports: 0,
+    running: 0,
+    materials: 0,
+    software: 0,
+    finance: 0,
+    regional: 0,
+  };
+  for (const row of data ?? []) {
+    const tags = Array.isArray(row.category_tags) ? row.category_tags.map((tag: unknown) => String(tag).toLowerCase()) : [];
+    if (tags.some((tag) => tag.includes("mechanical") || tag.includes("product"))) counts.mechanical += 1;
+    if (tags.some((tag) => tag.includes("motor"))) counts.motorsports += 1;
+    if (tags.some((tag) => tag.includes("running") || tag.includes("wearable") || tag.includes("footwear"))) counts.running += 1;
+    if (tags.some((tag) => tag.includes("material") || tag.includes("manufactur"))) counts.materials += 1;
+    if (tags.some((tag) => tag.includes("software") || tag.includes("ai"))) counts.software += 1;
+    if (tags.some((tag) => tag.includes("finance") || tag.includes("fintech"))) counts.finance += 1;
+  }
+  return counts;
+}
+
+async function loadKnownCompanies(db: SupabaseClient): Promise<{ name: string; website: string | null }[]> {
+  const { data } = await db.from("companies").select("name, website").eq("is_sample", false).limit(300);
+  return (data ?? []).map((row) => ({ name: String(row.name), website: row.website }));
 }
 
 async function loadHistory(db: SupabaseClient): Promise<string[]> {

@@ -105,7 +105,7 @@ When the database is connected, `/jobs` shows stored listings only. Sample cards
 
 Materials engineering is a high-interest field, alongside mechanical engineering, product development, motorsports, and running technology.
 
-Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `phase3a-rules-v1`.
+Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `phase35-rules-v1`. The weights are unchanged. Summer analyst, industrial placement, and undergraduate research titles count as student evidence.
 
 ### Research
 
@@ -120,7 +120,9 @@ Add these GitHub Actions secrets in addition to the collector secrets:
 
 Apply `supabase/migrations/20261113020000_jobs_research.sql` so query history can be stored. Research still saves jobs if that table is missing; it just cannot remember past queries.
 
-Web search is $10 per 1,000 calls on OpenAI's pricing page, plus model tokens. `gpt-6-astra` short-context rates on that page are $10 per million input tokens and $50 per million output tokens. The workflow stores token counts and a dollar figure only when the API returns usage for a model with those published rates.
+Web search is $10 per 1,000 calls on OpenAI's pricing page, plus model tokens. `gpt-6-astra` short-context rates on that page are $10 per million input tokens and $50 per million output tokens. `gpt-6.1-terra` is $1 and $5. The workflow stores token counts and a dollar figure only when the API returns usage for a model with those published rates. Each model request is limited to 2 web searches, and a run stops near $0.75. Leave `OPENAI_RESEARCH_MODEL` set to the model you chose. A model that is not known to support web search fails the run instead of inventing postings.
+
+The daily collector also reads verified SmartRecruiters boards and Nike's public Workday feed. Workable's public API is implemented, but no target employer currently returns jobs from it, so none are monitored. iCIMS, campus login systems, and Handshake are not collected.
 
 The dashboard does not start research. Run the workflow manually for a one-off search, and pass the `query` input when you want a single topic. Custom search notes on the page are still not executed.
 

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildCoverageReport } from "@/lib/jobs/collect/coverage";
+import { watchlist } from "@/lib/jobs/collect/watchlist";
 import { sampleCompanies, sampleJobs } from "@/lib/jobs/demo";
 import { defaultSearchPreferences, isSearchPreferences } from "@/lib/jobs/profile";
 import { anonClient, databaseConfigured, pinConfigured, serviceClient } from "@/lib/jobs/supabase";
@@ -79,6 +81,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     lastSuccessfulRefresh: null,
     collection: null,
     research: null,
+    coverage: unlocked ? buildCoverageReport({ companies: watchlist }) : null,
     databaseConfigured: databaseConfigured(),
     pinConfigured: pinConfigured(),
   };
@@ -117,6 +120,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
       companies,
       collection,
       research,
+      coverage: unlocked ? await loadCoverage(serviceClient(), collection, research) : null,
       lastSuccessfulRefresh: collection?.status === "success" ? collection.completedAt : null,
       databaseConfigured: databaseConfigured(),
       pinConfigured: pinConfigured(),
@@ -221,6 +225,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     lastSuccessfulRefresh: lastSuccessfulRefresh ?? (collection?.status === "success" ? collection.completedAt : null),
     collection,
     research,
+    coverage: unlocked ? await loadCoverage(serviceClient(), collection, research) : null,
     databaseConfigured: true,
     pinConfigured: pinConfigured(),
   };
@@ -238,6 +243,7 @@ function emptyDatabase(note: string): JobsPageModel {
     lastSuccessfulRefresh: null,
     collection: null,
     research: null,
+    coverage: null,
     databaseConfigured: true,
     pinConfigured: false,
   };
@@ -260,6 +266,42 @@ async function loadCompanies(reader: SupabaseClient): Promise<CompanyTarget[]> {
         .order("name")
     : extended;
   return ((fallback.data ?? []) as CompanyRow[]).filter((row) => row.is_sample !== true).map(toCompany);
+}
+
+async function loadCoverage(
+  db: SupabaseClient | null,
+  collection: JobsPageModel["collection"],
+  research: JobsPageModel["research"],
+): Promise<JobsPageModel["coverage"]> {
+  if (!db) return buildCoverageReport({ companies: watchlist });
+  const { data } = await db
+    .from("search_runs")
+    .select("run_type, status, completed_at, summary")
+    .in("status", ["success", "partial"])
+    .order("started_at", { ascending: false })
+    .limit(12);
+  const rows = data ?? [];
+  const latestCollection = rows.find((row) => row.run_type === "collection");
+  const latestResearch = rows.find((row) => row.run_type === "research");
+  const collectionSummary = (latestCollection?.summary ?? null) as Parameters<typeof buildCoverageReport>[0]["collection"];
+  const researchSummary = (latestResearch?.summary ?? null) as Parameters<typeof buildCoverageReport>[0]["research"];
+  return buildCoverageReport({
+    companies: watchlist,
+    collection: collectionSummary,
+    collectionAt: collection?.completedAt ?? (latestCollection?.completed_at as string | null) ?? null,
+    research: researchSummary,
+    researchAt: research?.completedAt ?? (latestResearch?.completed_at as string | null) ?? null,
+    history: rows.slice(0, 8).map((row) => {
+      const summary = (row.summary ?? {}) as { eligibleStudent?: number; eligible?: number; inserted?: number; imported?: number; estimatedUsd?: number | null };
+      return {
+        type: String(row.run_type),
+        at: (row.completed_at as string | null) ?? "",
+        eligible: summary.eligibleStudent ?? summary.eligible ?? 0,
+        inserted: summary.inserted ?? summary.imported ?? 0,
+        cost: summary.estimatedUsd ?? null,
+      };
+    }),
+  });
 }
 
 async function loadRunStatus(runType: "collection" | "research"): Promise<JobsPageModel["collection"]> {

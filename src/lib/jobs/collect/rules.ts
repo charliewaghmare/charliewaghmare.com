@@ -1,9 +1,18 @@
 import type { ScoreBreakdown } from "@/lib/jobs/types";
 
-export const SCORING_VERSION = "phase3a-rules-v1";
+export const SCORING_VERSION = "phase35-rules-v1";
+
+export type JobSource =
+  | "greenhouse"
+  | "lever"
+  | "ashby"
+  | "smartrecruiters"
+  | "workable"
+  | "workday"
+  | "web";
 
 export type CollectedPosting = {
-  provider: "greenhouse" | "lever" | "ashby" | "web";
+  provider: JobSource;
   sourceId: string;
   title: string;
   companyName: string;
@@ -68,7 +77,7 @@ const CATEGORIES: CategoryRule[] = [
     id: "Running and sports technology",
     level: "high",
     boost: true,
-    pattern: /\b(running shoes?|footwear|wearables?|biomechan)/,
+    pattern: /\b(running shoes?|footwear|underfoot|wearables?|biomechan)/,
   },
   {
     id: "Software",
@@ -280,7 +289,11 @@ function studentTitleEvidence(title: string): string | null {
     [/\bsummer students?\b/, "summer student role"],
     [/\bundergraduates?\b|\bundergrad\b/, "undergraduate role"],
     [/\bwork-integrated learning\b|\bwork integrated learning\b/, "work-integrated learning placement"],
-    [/\bstudent (engineer|engineering|researcher|research|placement|position|program|intern|technician|automotive)\b/, "student placement"],
+    [/\bstudent (engineer|engineering|researcher|research|analyst|placement|position|program|intern|technician|automotive)\b/, "student placement"],
+    [/\bundergraduates? researchers?\b|\bresearch assistant\b/, "undergraduate research role"],
+    [/\bindustrial placements?\b/, "industrial placement"],
+    [/\bsummer analysts?\b/, "summer analyst role"],
+    [/\buniversity students?\b/, "university student role"],
     [/\bresearch intern\b/, "research internship"],
   ];
   for (const [pattern, label] of patterns) {

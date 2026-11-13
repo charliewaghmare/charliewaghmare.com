@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { decideWrite, nextLifecycle } from "./dedupe";
 import { fetchBoard, SourceFailure } from "./fetch-source";
-import { mapAshbyJob, mapGreenhouseJob, mapLeverJob } from "./map-source";
+import { mapAshbyJob, mapGreenhouseJob, mapLeverJob, mapSmartRecruitersJob, mapWorkdayJob } from "./map-source";
+import { parseWorkdayBoard } from "./fetch-source";
+import { buildCoverageReport } from "./coverage";
 import { eligibility, scorePosting, type CollectedPosting } from "./rules";
 import { shouldRunScheduled } from "./schedule";
 import { canonicalUrl, stripHtml } from "./text";
@@ -64,6 +66,61 @@ test("eligibility keeps a student mechanical role and drops a senior role", () =
     ).include,
     false,
   );
+});
+
+test("new source payloads keep the posting identity", () => {
+  const smart = mapSmartRecruitersJob(
+    {
+      id: "99",
+      name: "Materials engineering intern",
+      releasedDate: "2026-11-01",
+      location: { city: "Mississauga", country: "ca" },
+      jobAd: { sections: [{ text: "<p>Summer student internship.</p>" }] },
+    },
+    "Continental",
+    "Continental",
+  );
+  assert.equal(smart?.provider, "smartrecruiters");
+  assert.equal(smart?.title, "Materials engineering intern");
+  assert.equal(smart?.sourceUrl?.includes("smartrecruiters.com/Continental/99"), true);
+  const workday = mapWorkdayJob(
+    {
+      jobPostingInfo: {
+        title: "Footwear development undergraduate intern",
+        jobReqId: "R-1",
+        location: "Beaverton, Oregon",
+        jobDescription: "<p>Undergraduate internship in footwear.</p>",
+        externalUrl: "https://nike.wd1.myworkdayjobs.com/en-US/nke/job/1",
+        startDate: "2026-10-27",
+      },
+    },
+    "Nike",
+    null,
+  );
+  assert.equal(workday?.provider, "workday");
+  assert.equal(parseWorkdayBoard("nike.wd1.myworkdayjobs.com/nike/nke")?.site, "nke");
+  assert.equal(parseWorkdayBoard("localhost/nike/nke"), null);
+});
+
+test("coverage report separates filtering from source coverage", () => {
+  const report = buildCoverageReport({
+    collection: {
+      fetched: 100,
+      eligibleStudent: 6,
+      ineligibleProfessional: 80,
+      uncertain: 10,
+      withheldEligible: 4,
+      belowThreshold: 2,
+      relevant: 4,
+      inserted: 3,
+      duplicates: 1,
+      suppressed: 0,
+    },
+  });
+  assert.equal(report.fetched, 100);
+  assert.equal(report.belowThreshold, 2);
+  assert.equal(report.aboveThreshold, 4);
+  assert.ok(report.verifiedSources > report.needsAttention.length);
 });
 
 test("score uses the published weights and does not invent salary", () => {

@@ -1,4 +1,7 @@
-export type AtsHit = { provider: "greenhouse" | "lever" | "ashby"; boardId: string };
+export type AtsHit = {
+  provider: "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "workday";
+  boardId: string;
+};
 
 export function detectAts(value: string | null | undefined): AtsHit | null {
   if (!value) return null;
@@ -18,6 +21,15 @@ export function detectAts(value: string | null | undefined): AtsHit | null {
     return { provider: "lever", boardId: segment };
   }
   if (host === "jobs.ashbyhq.com") return { provider: "ashby", boardId: segment };
+  if (host === "jobs.smartrecruiters.com") return { provider: "smartrecruiters", boardId: segment };
+  if (host === "apply.workable.com") return { provider: "workable", boardId: segment };
+  if (host.endsWith(".myworkdayjobs.com")) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    const site = parts[0] === "en-US" || parts[0] === "en-CA" ? parts[1] : parts[0];
+    const tenant = host.split(".")[0];
+    if (!site || !tenant) return null;
+    return { provider: "workday", boardId: `${host}/${tenant}/${site}` };
+  }
   return null;
 }
 

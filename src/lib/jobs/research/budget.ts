@@ -16,10 +16,44 @@ export const RESEARCH_BUDGET = {
   tracksPerRun: 2,
   queriesPerTrack: 2,
   maxSearchCalls: 4,
+  maxToolCallsPerRequest: 2,
   maxCandidates: 8,
   maxCompanyAdds: 3,
+  maxSpendUsd: 0.75,
   maxDurationMs: 8 * 60 * 1000,
 };
+
+export const WEB_SEARCH_MODELS = new Set([
+  "gpt-6-astra",
+  "gpt-6-luna",
+  "gpt-6-sol",
+  "gpt-6.1-sol",
+  "gpt-6.1-terra",
+]);
+
+export function researchLimits(env: Record<string, string | undefined> = process.env): typeof RESEARCH_BUDGET {
+  return {
+    ...RESEARCH_BUDGET,
+    tracksPerRun: positiveInt(env.RESEARCH_TRACKS_PER_RUN, RESEARCH_BUDGET.tracksPerRun),
+    queriesPerTrack: positiveInt(env.RESEARCH_QUERIES_PER_TRACK, RESEARCH_BUDGET.queriesPerTrack),
+    maxSearchCalls: positiveInt(env.RESEARCH_MAX_CALLS, RESEARCH_BUDGET.maxSearchCalls),
+    maxToolCallsPerRequest: positiveInt(env.RESEARCH_MAX_TOOL_CALLS, RESEARCH_BUDGET.maxToolCallsPerRequest),
+    maxCandidates: positiveInt(env.RESEARCH_MAX_VERIFICATIONS, RESEARCH_BUDGET.maxCandidates),
+    maxSpendUsd: positiveNumber(env.RESEARCH_MAX_SPEND_USD, RESEARCH_BUDGET.maxSpendUsd),
+  };
+}
+
+function positiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  if (!value || !Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
+}
+
+function positiveNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  if (!value || !Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
 
 export type Usage = {
   inputTokens: number;

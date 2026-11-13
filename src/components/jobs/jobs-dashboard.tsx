@@ -235,6 +235,7 @@ export function JobsDashboard({
       ) : view === "settings" && unlocked && preferences ? (
         <SettingsPanel
           preferences={preferences}
+          coverage={model.coverage}
           ignored={model.ignored}
           searches={model.customSearches}
           searchPrompt={searchPrompt}
@@ -478,6 +479,7 @@ function CompanyList({ companies }: { companies: JobsPageModel["companies"] }) {
 
 function SettingsPanel({
   preferences,
+  coverage,
   ignored,
   searches,
   searchPrompt,
@@ -489,6 +491,7 @@ function SettingsPanel({
   onUndo,
 }: {
   preferences: SearchPreferences;
+  coverage: JobsPageModel["coverage"];
   ignored: JobsPageModel["ignored"];
   searches: JobsPageModel["customSearches"];
   searchPrompt: string;
@@ -502,6 +505,7 @@ function SettingsPanel({
   const total = weightsTotal(preferences.weights);
   return (
     <div className="mt-8 grid gap-4 lg:grid-cols-2">
+      {coverage ? <CoveragePanel coverage={coverage} /> : null}
       <section className="td-card p-4 sm:p-5">
         <h2 className="type-section text-[1.15rem]">Ranking weights</h2>
         <p className="td-muted mt-2 text-sm leading-6">
@@ -608,6 +612,58 @@ function SettingsPanel({
         </div>
       </section>
     </div>
+  );
+}
+
+function CoveragePanel({ coverage }: { coverage: NonNullable<JobsPageModel["coverage"]> }) {
+  const rows = [
+    ["Companies monitored", coverage.monitored],
+    ["Verified ATS sources", coverage.verifiedSources],
+    ["Postings fetched", coverage.fetched],
+    ["Eligible student roles", coverage.eligible],
+    ["Ineligible professional roles", coverage.ineligible],
+    ["Uncertain eligibility", coverage.uncertain],
+    ["Eligible but held back", coverage.withheldEligible],
+    ["Eligible below 50", coverage.belowThreshold],
+    ["Eligible at 50 or above", coverage.aboveThreshold],
+    ["New jobs saved", coverage.inserted],
+    ["Duplicates", coverage.duplicates],
+    ["Suppressed", coverage.suppressed],
+    ["AI jobs saved", coverage.aiImported],
+    ["AI searches", coverage.aiSearchCalls ?? "—"],
+    ["AI estimated cost", coverage.aiCost == null ? "—" : `$${coverage.aiCost}`],
+  ];
+  return (
+    <section className="td-card p-4 sm:p-5 lg:col-span-2">
+      <h2 className="type-section text-[1.15rem]">Discovery coverage</h2>
+      <p className="td-muted mt-2 text-sm leading-6">
+        Eligible roles under 50 stay in Discover. Lower the minimum match score to see them. Held-back roles are student postings outside the location rules.
+        {coverage.needsAttention.length > 0
+          ? ` Sources still pending: ${coverage.needsAttention.join(", ")}.`
+          : ""}
+      </p>
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+        {rows.map(([label, value]) => (
+          <div key={String(label)}>
+            <dt className="td-muted text-[0.75rem]">{label}</dt>
+            <dd className="text-sm">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="td-muted mt-4 text-[0.8125rem] leading-6">
+        Last collection {formatTimestamp(coverage.lastCollection) ?? "not recorded"}. Last research{" "}
+        {formatTimestamp(coverage.lastResearch) ?? "not recorded"}.
+      </p>
+      {coverage.bySource.length > 0 ? (
+        <ul className="mt-3 space-y-1 text-[0.8125rem] leading-6">
+          {coverage.bySource.slice(0, 12).map((source) => (
+            <li key={`${source.provider}-${source.name}`}>
+              {source.name} ({source.provider}): {source.fetched} fetched, {source.eligible} eligible, {source.aboveThreshold} at 50 or above
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

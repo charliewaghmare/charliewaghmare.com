@@ -141,8 +141,34 @@ export type JobsPageModel = {
   lastSuccessfulRefresh: string | null;
   collection: CollectionStatus | null;
   research: CollectionStatus | null;
+  coverage: CoverageReport | null;
   databaseConfigured: boolean;
   pinConfigured: boolean;
+};
+
+export type CoverageReport = {
+  monitored: number;
+  verifiedSources: number;
+  needsAttention: string[];
+  fetched: number;
+  eligible: number;
+  ineligible: number;
+  uncertain: number;
+  withheldEligible: number;
+  belowThreshold: number;
+  aboveThreshold: number;
+  duplicates: number;
+  suppressed: number;
+  inserted: number;
+  aiImported: number;
+  aiCandidates: number;
+  aiVerified: number;
+  aiCost: number | null;
+  aiSearchCalls: number | null;
+  lastCollection: string | null;
+  lastResearch: string | null;
+  bySource: { name: string; provider: string; fetched: number; eligible: number; aboveThreshold: number }[];
+  history: { type: string; at: string; eligible: number; inserted: number; cost: number | null }[];
 };
 
 export function scoreBand(score: number): { id: ScoreBand; label: string } {

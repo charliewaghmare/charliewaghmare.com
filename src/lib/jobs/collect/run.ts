@@ -45,12 +45,29 @@ export async function collectJobs(options: {
   if (options.dryRun) {
     const summary = emptySummary(results);
     for (const result of results) {
+      const tally = {
+        name: result.company.name,
+        provider: result.company.provider ?? "unknown",
+        fetched: result.postings.length,
+        eligible: 0,
+        ineligible: 0,
+        uncertain: 0,
+        withheldEligible: 0,
+        aboveThreshold: 0,
+        belowThreshold: 0,
+      };
       for (const posting of result.postings) {
         const assessment = assessPosting(posting, options.now);
         if (assessment.publish) {
           summary.eligibleStudent += 1;
-          if (assessment.score >= 50) summary.relevant += 1;
-          else summary.belowThreshold += 1;
+          if (assessment.score >= 50) {
+            summary.relevant += 1;
+            tally.aboveThreshold += 1;
+          } else {
+            summary.belowThreshold += 1;
+            tally.belowThreshold += 1;
+          }
+          tally.eligible += 1;
           if (summary.examples.length < 12) {
             summary.examples.push(
               `${posting.companyName}: ${posting.title} (${assessment.tags.join(", ") || "uncategorized"}) ${assessment.score}`,
@@ -58,10 +75,19 @@ export async function collectJobs(options: {
           }
         } else {
           summary.excluded += 1;
-          if (assessment.status === "uncertain") summary.uncertain += 1;
-          else if (assessment.status === "ineligible_professional_role") summary.ineligibleProfessional += 1;
+          if (assessment.status === "eligible_student_role") {
+            summary.withheldEligible += 1;
+            tally.withheldEligible += 1;
+          } else if (assessment.status === "uncertain") {
+            summary.uncertain += 1;
+            tally.uncertain += 1;
+          } else if (assessment.status === "ineligible_professional_role") {
+            summary.ineligibleProfessional += 1;
+            tally.ineligible += 1;
+          }
         }
       }
+      summary.bySource.push(tally);
     }
     console.log(`Dry run. Nothing was saved. ${JSON.stringify(summary)}`);
     return summary;
@@ -113,7 +139,16 @@ async function loadStoredBoards(db: SupabaseClient): Promise<WatchCompany[]> {
   if (error || !data) return [];
   return data.flatMap((row) => {
     const provider = row.ats_provider;
-    if (provider !== "greenhouse" && provider !== "lever" && provider !== "ashby") return [];
+    if (
+      provider !== "greenhouse" &&
+      provider !== "lever" &&
+      provider !== "ashby" &&
+      provider !== "smartrecruiters" &&
+      provider !== "workable" &&
+      provider !== "workday"
+    ) {
+      return [];
+    }
     if (!row.ats_board_id) return [];
     return [
       {
@@ -169,16 +204,20 @@ function emptySummary(results: SourceResult[]): RunSummary {
     eligibleStudent: 0,
     ineligibleProfessional: 0,
     uncertain: 0,
+    withheldEligible: 0,
     relevant: 0,
     belowThreshold: 0,
     inserted: 0,
     updated: 0,
+    duplicates: 0,
+    suppressed: 0,
     stale: 0,
     closed: 0,
     reviewed: 0,
     retained: 0,
     storedExcluded: 0,
     storedQuarantined: 0,
+    bySource: [],
     examples: [],
     errors: results.flatMap((result) => (result.error ? [result.error] : [])),
   };

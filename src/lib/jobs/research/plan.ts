@@ -14,6 +14,7 @@ export function planResearch(input: {
   tracksPerRun?: number;
   queriesPerTrack?: number;
   tracks?: ResearchTrack[];
+  coverage?: Record<string, number>;
 }): PlannedQuery[] {
   const focus = input.focus?.trim();
   if (focus) {
@@ -24,19 +25,24 @@ export function planResearch(input: {
   const perTrack = input.queriesPerTrack ?? RESEARCH_BUDGET.queriesPerTrack;
   const seen = new Set((input.history ?? []).map(normalizeQuery));
   const start = tracks.length === 0 ? 0 : Math.floor((input.now ?? new Date()).getTime() / 86_400_000) % tracks.length;
-  const ordered = [...tracks.slice(start), ...tracks.slice(0, start)];
+  const coverage = input.coverage ?? {};
+  const ranked = tracks
+    .map((track, index) => {
+      const interest = track.interest === "high" ? 3 : 1;
+      const covered = coverage[track.id] ?? 0;
+      return {
+        track,
+        score: interest / (1 + covered),
+        rotation: (index - start + tracks.length) % tracks.length,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.rotation - right.rotation);
   const chosen: PlannedQuery[] = [];
-  for (const track of ordered) {
-    if (chosen.filter((item) => item.track === track.id).length > 0 && new Set(chosen.map((item) => item.track)).size >= perRun) {
-      continue;
-    }
-    const fresh = track.queries.filter((query) => !seen.has(normalizeQuery(query)));
-    if (fresh.length === 0) continue;
-    if (new Set(chosen.map((item) => item.track)).size >= perRun && !chosen.some((item) => item.track === track.id)) {
-      continue;
-    }
+  for (const item of ranked) {
+    if (new Set(chosen.map((query) => query.track)).size >= perRun) break;
+    const fresh = item.track.queries.filter((query) => !seen.has(normalizeQuery(query)));
     for (const query of fresh.slice(0, perTrack)) {
-      chosen.push({ track: track.id, query });
+      chosen.push({ track: item.track.id, query });
       seen.add(normalizeQuery(query));
     }
   }

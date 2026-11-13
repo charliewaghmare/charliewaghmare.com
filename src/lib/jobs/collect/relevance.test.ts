@@ -87,6 +87,56 @@ test("permanent, part-time, senior, lead, and technician roles are rejected", ()
   }
 });
 
+test("summer analyst and industrial placement titles are student roles", () => {
+  const analyst = assessPosting(
+    {
+      provider: "greenhouse",
+      sourceId: "a",
+      title: "Summer analyst",
+      companyName: "Northline",
+      location: "Toronto",
+      country: "Canada",
+      workArrangement: "hybrid",
+      description: "Summer 2027 program.",
+      departments: [],
+      sourceUrl: "https://example.com/a",
+      applicationUrl: "https://example.com/a",
+      postedOn: null,
+      employmentType: null,
+      salaryMin: null,
+      salaryMax: null,
+      salaryCurrency: null,
+      salaryPeriod: null,
+    },
+    new Date("2026-11-12T18:00:00Z"),
+  );
+  assert.equal(analyst.publish, true);
+  const permanent = assessPosting(
+    {
+      provider: "greenhouse",
+      sourceId: "p",
+      title: "Permanent financial analyst",
+      companyName: "Northline",
+      location: "Toronto",
+      country: "Canada",
+      workArrangement: "onsite",
+      description: "This is a permanent role.",
+      departments: [],
+      sourceUrl: "https://example.com/p",
+      applicationUrl: "https://example.com/p",
+      postedOn: null,
+      employmentType: null,
+      salaryMin: null,
+      salaryMax: null,
+      salaryCurrency: null,
+      salaryPeriod: null,
+    },
+    new Date("2026-11-12T18:00:00Z"),
+  );
+  assert.equal(permanent.publish, false);
+  assert.equal(permanent.status, "ineligible_professional_role");
+});
+
 test("co-op, research, and student technician placements are accepted", () => {
   const coop = assessPosting(
     posting({

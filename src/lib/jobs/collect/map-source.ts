@@ -144,3 +144,103 @@ export function mapAshbyJob(value: unknown, companyName: string): CollectedPosti
     ...salary,
   };
 }
+
+export function mapSmartRecruitersJob(
+  value: unknown,
+  companyName: string,
+  boardId: string,
+): CollectedPosting | null {
+  const row = record(value);
+  const title = text(row?.name) ?? text(row?.title);
+  const id = text(row?.id) ?? text(row?.uuid);
+  if (!row || !title || !id) return null;
+  const location = [text(record(row.location)?.city), text(record(row.location)?.country)].filter(Boolean).join(", ");
+  const sections = Array.isArray(record(row.jobAd)?.sections) ? (record(row.jobAd)?.sections as unknown[]) : [];
+  const description = stripHtml(
+    sections
+      .map((section) => text(record(section)?.text) ?? "")
+      .filter(Boolean)
+      .join("\n"),
+  );
+  const sourceUrl = canonicalUrl(`https://jobs.smartrecruiters.com/${encodeURIComponent(boardId)}/${encodeURIComponent(id)}`);
+  return {
+    provider: "smartrecruiters",
+    sourceId: id,
+    title,
+    companyName,
+    location: location || null,
+    country: text(record(row.location)?.country) ?? inferCountry(location),
+    workArrangement: inferArrangement(location, text(record(row.location)?.remote) === "true" ? "remote" : null),
+    description,
+    departments: [text(row.department)].filter((item): item is string => Boolean(item)),
+    sourceUrl,
+    applicationUrl: sourceUrl,
+    postedOn: dateOnly(row.releasedDate),
+    employmentType: text(row.typeOfEmployment),
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    salaryPeriod: null,
+  };
+}
+
+export function mapWorkableJob(value: unknown, companyName: string, boardId: string): CollectedPosting | null {
+  const row = record(value);
+  const title = text(row?.title);
+  const id = text(row?.shortcode) ?? (typeof row?.id === "number" ? String(row.id) : text(row?.id));
+  if (!row || !title || !id) return null;
+  const locationRow = record(row.location);
+  const location = [text(locationRow?.city), text(locationRow?.region), text(locationRow?.country)].filter(Boolean).join(", ");
+  const description = stripHtml(text(row.description) ?? text(row.requirements) ?? "");
+  const sourceUrl = canonicalUrl(text(row.url) ?? text(row.application_url) ?? `https://apply.workable.com/${encodeURIComponent(boardId)}/j/${encodeURIComponent(id)}`);
+  return {
+    provider: "workable",
+    sourceId: id,
+    title,
+    companyName,
+    location: location || null,
+    country: text(locationRow?.country) ?? inferCountry(location),
+    workArrangement: inferArrangement(location, text(row.workplace)),
+    description,
+    departments: Array.isArray(row.department) ? row.department.flatMap((item) => (text(item) ? [text(item) as string] : [])) : [],
+    sourceUrl,
+    applicationUrl: sourceUrl,
+    postedOn: dateOnly(row.published),
+    employmentType: text(row.type),
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    salaryPeriod: null,
+  };
+}
+
+export function mapWorkdayJob(value: unknown, companyName: string, postingUrl: string | null): CollectedPosting | null {
+  const row = record(value);
+  const info = record(row?.jobPostingInfo) ?? row;
+  const title = text(info?.title);
+  const id = text(info?.jobReqId) ?? text(info?.id) ?? text(info?.jobPostingId);
+  if (!info || !title || !id) return null;
+  const location = text(info.location);
+  const countryName = text(record(info.country)?.descriptor) ?? text(info.country);
+  const description = stripHtml(text(info.jobDescription) ?? "");
+  const sourceUrl = canonicalUrl(text(info.externalUrl) ?? postingUrl);
+  return {
+    provider: "workday",
+    sourceId: id,
+    title,
+    companyName,
+    location,
+    country: countryName ?? inferCountry(location),
+    workArrangement: inferArrangement(location, text(info.timeType)),
+    description,
+    departments: [],
+    sourceUrl,
+    applicationUrl: sourceUrl,
+    postedOn: dateOnly(info.startDate) ?? dateOnly(info.postedOn),
+    employmentType: text(info.timeType),
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    salaryPeriod: null,
+  };
+}
