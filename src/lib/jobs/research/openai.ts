@@ -1,6 +1,10 @@
 import { parseFindings, outputText, usageFromPayload, type ResearchFindings } from "@/lib/jobs/research/schema";
 import { researchLimits, WEB_SEARCH_MODELS, type Usage } from "@/lib/jobs/research/budget";
 
+export class ResearchResponseError extends Error {
+  constructor(message: string, readonly usage: Usage) { super(message); }
+}
+
 export const DEFAULT_RESEARCH_MODEL = "gpt-6-astra";
 
 export async function searchOpenAI(input: {
@@ -8,6 +12,7 @@ export async function searchOpenAI(input: {
   track: string;
   apiKey: string;
   model?: string;
+  maxToolCalls?: number;
   fetchImpl?: typeof fetch;
 }): Promise<{ findings: ResearchFindings; usage: Usage }> {
   const fetchImpl = input.fetchImpl ?? fetch;
@@ -22,6 +27,7 @@ export async function searchOpenAI(input: {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     response = await fetchImpl("https://api.openai.com/v1/responses", {
       method: "POST",
+      signal: AbortSignal.timeout(90_000),
       headers: {
         authorization: `Bearer ${input.apiKey}`,
         "content-type": "application/json",
@@ -30,7 +36,7 @@ export async function searchOpenAI(input: {
         model,
         tools: [{ type: "web_search" }],
         tool_choice: "auto",
-        max_tool_calls: limits.maxToolCallsPerRequest,
+        max_tool_calls: input.maxToolCalls ?? limits.maxToolCallsPerRequest,
         max_output_tokens: 1800,
         input: promptFor(input.track, input.query),
       }),
@@ -45,7 +51,9 @@ export async function searchOpenAI(input: {
     throw new Error(`OpenAI research request failed (${status}).`);
   }
   const payload = await response.json();
-  return { findings: parseFindings(outputText(payload)), usage: usageFromPayload(payload) };
+  const usage = usageFromPayload(payload);
+  try { return { findings: parseFindings(outputText(payload)), usage }; }
+  catch { throw new ResearchResponseError("Research returned invalid findings; usage was recorded.", usage); }
 }
 
 function promptFor(track: string, query: string): string {

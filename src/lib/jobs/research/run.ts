@@ -1,23 +1,28 @@
 import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { detectAts, sameCompany, sameRequisition } from "@/lib/jobs/research/ats";
+import { detectAts, atsPostingIdentity, sameCompany } from "@/lib/jobs/research/ats";
 import { addUsage, estimateResearchUsd, researchLimits, type Usage } from "@/lib/jobs/research/budget";
 import { DEPTH_LIMITS, customScope, parseDepth, planCustomQueries, type ResearchDepth } from "@/lib/jobs/research/depth";
-import { searchOpenAI, DEFAULT_RESEARCH_MODEL } from "@/lib/jobs/research/openai";
+import { searchOpenAI, DEFAULT_RESEARCH_MODEL, ResearchResponseError } from "@/lib/jobs/research/openai";
 import { planResearch } from "@/lib/jobs/research/plan";
 import { screenCandidate } from "@/lib/jobs/research/screen";
 import type { ResearchFindings } from "@/lib/jobs/research/schema";
 import { fetchPublicPage, pageSupportsPosting } from "@/lib/jobs/research/verify";
 import { shouldRunResearch } from "@/lib/jobs/collect/schedule";
-import { assessPosting, SCORING_VERSION, type CollectedPosting } from "@/lib/jobs/collect/rules";
+import { assessPosting, type CollectedPosting } from "@/lib/jobs/collect/rules";
 import { canonicalUrl, inferArrangement, inferCountry } from "@/lib/jobs/collect/text";
-import { decideWrite } from "@/lib/jobs/collect/dedupe";
+import { structuredPosting } from "@/lib/jobs/research/structured";
+import { assertPublicHttps } from "@/lib/jobs/research/safety";
+import { parseWorkdayBoard } from "@/lib/jobs/collect/fetch-source";
+import { upsertJob } from "@/lib/jobs/collect/persist";
 
 export type ResearchSummary = {
   queries: number;
   searchCalls: number;
   candidates: number;
   verified: number;
+  verificationAttempts: number;
+  companyChecks: number;
   eligible: number;
   imported: number;
   updated: number;
@@ -91,9 +96,10 @@ export async function runResearch(options: {
         tracksPerRun: researchLimits().tracksPerRun,
         queriesPerTrack: researchLimits().queriesPerTrack,
       });
-  const search = options.search ?? defaultSearch;
+  const search = options.search ?? ((query, track) => defaultSearch(query, track, limits.maxToolCallsPerRequest));
   const fetchImpl = options.fetchImpl ?? fetch;
   const model = process.env.OPENAI_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
+  const seenUrls = new Set<string>();
   let searches = 0;
   let searchFailures = 0;
   for (const item of planned) {
@@ -121,9 +127,14 @@ export async function runResearch(options: {
         limits.maxCandidates,
         limits.maxCompanyAdds,
         scope.allowInternational,
+        seenUrls,
       );
       if (db && !options.dryRun && !options.query) await recordQuery(db, item, result.findings.jobs.length);
     } catch (error) {
+      if (error instanceof ResearchResponseError) {
+        summary.usage = addUsage(summary.usage, error.usage);
+        summary.searchCalls += error.usage.searchCalls;
+      }
       searchFailures += 1;
       summary.errors.push(error instanceof Error ? error.message : "Research query failed.");
     }
@@ -145,27 +156,28 @@ async function ingestFindings(
   summary: ResearchSummary,
   fetchImpl: typeof fetch,
   dryRun: boolean,
-  knownCompanies: { name: string; website: string | null }[],
+  knownCompanies: { name: string; website: string | null; monitored?: boolean; enabled?: boolean }[],
   maxCandidates: number,
   maxCompanyAdds: number,
   allowInternational: boolean,
+  seenUrls: Set<string>,
 ): Promise<void> {
-  const seenUrls = new Set<string>();
   for (const job of findings.jobs) {
-    if (summary.verified >= maxCandidates) break;
+    if (summary.verificationAttempts >= maxCandidates) break;
     const screened = screenCandidate(job, seenUrls);
     if (!screened.ok) {
       summary.screenedOut += 1;
       summary.errors.push(`${job.employer}: ${screened.reason}`);
       continue;
     }
-    const checked = await verifyJob(job, fetchImpl);
+    summary.verificationAttempts += 1;
+    const checked = await verifyJob(job, fetchImpl, allowInternational);
     if (!checked.ok) {
       summary.errors.push(`${job.employer}: ${checked.reason}`);
       continue;
     }
     summary.verified += 1;
-    const posting = checked.posting;
+    const posting = { ...checked.posting, allowInternational, provenance: "web-research" as const };
     const assessment = assessPosting(posting, new Date(), { allowInternational });
     if (!assessment.publish) {
       if (assessment.status === "uncertain") summary.uncertain += 1;
@@ -176,7 +188,7 @@ async function ingestFindings(
     summary.eligible += 1;
     const below = assessment.score < 50;
     if (below) summary.belowThreshold += 1;
-    const outcome = dryRun || !db ? "eligible" : await saveJob(db, posting, assessment.score, assessment);
+    const outcome = dryRun || !db ? "eligible" : await saveJob(db, posting, assessment);
     if (outcome === "duplicate") summary.duplicates += 1;
     if (outcome === "inserted") summary.imported += 1;
     if (outcome === "updated") summary.updated += 1;
@@ -192,12 +204,13 @@ async function ingestFindings(
     }
   }
   for (const company of findings.companies) {
-    if (summary.companiesAdded >= maxCompanyAdds) break;
+    if (summary.companiesAdded >= maxCompanyAdds || summary.companyChecks >= maxCompanyAdds) break;
     summary.companiesDiscovered += 1;
-    if (knownCompanies.some((known) => sameCompany(known, company))) {
+    if (knownCompanies.some((known) => sameCompany(known, company) && (known.monitored || known.enabled === false))) {
       summary.errors.push(`${company.name}: Already monitored, so company research was reused.`);
       continue;
     }
+    summary.companyChecks += 1;
     const verified = await verifyCompany(company, fetchImpl);
     if (!verified.ok) {
       summary.errors.push(`${company.name}: ${verified.reason}`);
@@ -210,6 +223,7 @@ async function ingestFindings(
       continue;
     }
     const added = await saveCompany(db, company, verified);
+    knownCompanies.push({ name: company.name, website: company.website, monitored: Boolean(verified.board), enabled: true });
     if (added.added) summary.companiesAdded += 1;
     if (added.board) summary.boardsEnabled += 1;
     else if (added.added) summary.companiesWithoutOpenings += 1;
@@ -219,6 +233,7 @@ async function ingestFindings(
 async function verifyJob(
   job: ResearchFindings["jobs"][number],
   fetchImpl: typeof fetch,
+  allowInternational: boolean,
 ): Promise<{ ok: true; posting: CollectedPosting } | { ok: false; reason: string }> {
   let page;
   try {
@@ -229,7 +244,24 @@ async function verifyJob(
   if (!page.ok) return page;
   const supported = pageSupportsPosting({ title: job.title, quote: job.evidenceQuote, text: page.text });
   if (!supported.ok) return supported;
-  const sourceUrl = canonicalUrl(job.sourceUrl);
+  const sourceUrl = canonicalUrl(page.url ?? job.sourceUrl);
+  const source = assertPublicHttps(sourceUrl ?? job.sourceUrl);
+  const application = assertPublicHttps(job.applicationUrl);
+  const sourceBoard = detectAts(source.toString());
+  const sourceIdentity = atsPostingIdentity(source.toString());
+  if (sourceBoard && !sourceIdentity) return { ok: false, reason: "A board or search page is not an individual posting." };
+  const linkedApplication = [...(page.html ?? "").matchAll(/href\s*=\s*["']([^"']+)["']/gi)].some((match) => {
+    try { return canonicalUrl(new URL(match[1], source).toString()) === canonicalUrl(application.toString()); } catch { return false; }
+  });
+  if (canonicalUrl(application.toString()) !== sourceUrl && !linkedApplication &&
+      !(sourceIdentity && sourceIdentity === atsPostingIdentity(application.toString()))) {
+    return { ok: false, reason: "The application destination did not match the verified employer source." };
+  }
+  if (!sourceBoard) {
+    const structured = structuredPosting({ html: page.html ?? "", visibleText: page.text, url: source.toString(), title: job.title, employer: job.employer, allowInternational });
+    if (!structured) return { ok: false, reason: "The page did not establish employer ownership and student eligibility." };
+    return { ok: true, posting: { ...structured, provenance: "web-research" } };
+  }
   const country = job.country ?? inferCountry(job.location);
   return {
     ok: true,
@@ -270,8 +302,18 @@ async function verifyCompany(
   if (token && !site.text.toLowerCase().includes(token)) {
     return { ok: false, reason: "The website did not mention the company name." };
   }
-  const hinted = company.atsProvider && company.atsBoardId ? { provider: company.atsProvider, boardId: company.atsBoardId } : null;
-  const detected = detectAts(company.careersUrl) ?? hinted;
+  // A model-supplied board hint is not evidence that the employer owns it.
+  // Follow only links present on the verified company site or its own careers page.
+  let html = site.html ?? "";
+  if (company.careersUrl && new URL(company.careersUrl).hostname.replace(/^www\./, "") ===
+      new URL(site.url ?? company.website).hostname.replace(/^www\./, "")) {
+    const careers = await fetchPublicPage(company.careersUrl, fetchImpl);
+    if (careers.ok) html += careers.html ?? "";
+  }
+  const links = [...html.matchAll(/(?:href|src)\s*=\s*["']([^"']+)["']/gi)].flatMap((match) => {
+    try { return [new URL(match[1], site.url ?? company.website).toString()]; } catch { return []; }
+  });
+  const detected = links.map(detectAts).find((board) => board !== null) ?? null;
   if (detected) {
     const live = await boardResponds(detected, fetchImpl);
     if (!live) return { ok: true, board: null };
@@ -285,7 +327,7 @@ async function boardResponds(board: { provider: string; boardId: string }, fetch
   const url = boardProbeUrl(board);
   if (!url) return false;
   try {
-    const response = await fetchImpl(url, { headers: { accept: "application/json", "user-agent": "charliewaghmare-jobs/1.0" } });
+    const response = await fetchImpl(url, { signal: AbortSignal.timeout(20_000), headers: { accept: "application/json", "user-agent": "charliewaghmare-jobs/1.0" } });
     if (!response.ok) return false;
     const payload = await response.json();
     if (Array.isArray(payload)) return true;
@@ -300,72 +342,11 @@ async function boardResponds(board: { provider: string; boardId: string }, fetch
 async function saveJob(
   db: SupabaseClient,
   posting: CollectedPosting,
-  score: number,
   assessment: ReturnType<typeof assessPosting>,
 ): Promise<"inserted" | "updated" | "duplicate"> {
   const companyId = await ensureCompany(db, posting.companyName, null, null, posting.location, false);
-  const sourceUrl = posting.sourceUrl;
-  const [{ data: byIdentity }, { data: byUrl }, { data: suppressed }, { data: siblings }] = await Promise.all([
-    db.from("jobs").select("id").eq("source", "web").eq("source_id", posting.sourceId).maybeSingle(),
-    sourceUrl ? db.from("jobs").select("id").eq("source_url", sourceUrl).maybeSingle() : Promise.resolve({ data: null }),
-    db.from("job_suppressions").select("id").eq("source_url", sourceUrl).maybeSingle(),
-    db.from("jobs").select("id, title, location, companies(name)").eq("company_id", companyId).limit(20),
-  ]);
-  const secondary = (siblings ?? []).find((row) => {
-    const company = Array.isArray(row.companies) ? row.companies[0] : row.companies;
-    return sameRequisition(
-      { company: posting.companyName, title: posting.title, location: posting.location },
-      { company: company?.name ?? posting.companyName, title: row.title, location: row.location },
-    );
-  });
-  const decision = decideWrite({
-    existingByIdentity: Boolean(byIdentity || secondary),
-    existingByUrl: Boolean(byUrl),
-    suppressed: Boolean(suppressed),
-  });
-  if (decision.action === "skip") return "duplicate";
-  const nowIso = new Date().toISOString();
-  const existingId = byIdentity?.id ?? byUrl?.id ?? secondary?.id;
-  const row = {
-    source: "web",
-    source_id: posting.sourceId,
-    source_url: sourceUrl,
-    application_url: posting.applicationUrl,
-    title: posting.title,
-    company_id: companyId,
-    location: posting.location,
-    country: posting.country,
-    work_arrangement: posting.workArrangement,
-    description: posting.description,
-    employment_type: posting.employmentType,
-    last_verified_at: nowIso,
-    match_score: score,
-    score_breakdown: assessment.breakdown,
-    scoring_version: SCORING_VERSION,
-    recommendation: assessment.explanation,
-    skill_gaps: assessment.gaps,
-    category_tags: assessment.tags,
-    active: !decision.keepInactive,
-    lifecycle_status: decision.keepInactive ? "closed" : "active",
-    verification_status: "verified",
-    is_sample: false,
-    updated_at: nowIso,
-    raw_metadata: {
-      eligibility: assessment.status,
-      eligibilityReason: assessment.reason,
-      classificationVersion: SCORING_VERSION,
-      provenance: "web-research",
-    },
-  };
-  if (decision.action === "update" && existingId) {
-    const { error } = await db.from("jobs").update(row).eq("id", existingId);
-    if (error) throw new Error(error.message);
-    return "updated";
-  }
-  const { error } = await db.from("jobs").insert({ ...row, discovered_at: nowIso });
-  if (error) throw new Error(error.message);
-  await db.from("companies").update({ has_verified_opening: true, monitoring_status: "active" }).eq("id", companyId);
-  return "inserted";
+  const outcome = await upsertJob(db, companyId, posting, assessment);
+  return outcome === "skipped" ? "duplicate" : outcome;
 }
 
 async function saveCompany(
@@ -373,9 +354,10 @@ async function saveCompany(
   company: ResearchFindings["companies"][number],
   verified: { board: ReturnType<typeof detectAts> },
 ): Promise<{ added: boolean; board: boolean }> {
-  const { data: existingRows } = await db.from("companies").select("id, name, website").eq("is_sample", false).limit(200);
+  const { data: existingRows, error: lookupError } = await db.from("companies").select("id, name, website, ats_provider, ats_board_id, enabled").eq("is_sample", false).limit(1000);
+  if (lookupError) throw new Error(`Could not look up company: ${lookupError.message}`);
   const existing = (existingRows ?? []).find((row) => sameCompany({ name: company.name, website: company.website }, row));
-  const monitoring = verified.board ? "active" : company.careersUrl ? "pending" : "watching";
+  const monitoring = (verified.board || existing?.ats_board_id) ? "active" : company.careersUrl ? "pending" : "watching";
   const row = {
     name: company.name,
     website: canonicalUrl(company.website),
@@ -383,9 +365,9 @@ async function saveCompany(
     industry: company.industry,
     location: company.location,
     why_interesting: company.why,
-    ats_provider: verified.board?.provider ?? null,
-    ats_board_id: verified.board?.boardId ?? null,
-    enabled: true,
+    ats_provider: verified.board?.provider ?? existing?.ats_provider ?? null,
+    ats_board_id: verified.board?.boardId ?? existing?.ats_board_id ?? null,
+    enabled: existing?.enabled ?? true,
     last_checked_at: new Date().toISOString(),
     categories: [company.industry],
     geographic_relevance: company.location,
@@ -438,6 +420,8 @@ function emptySummary(depth: ResearchDepth | null = null): ResearchSummary {
     searchCalls: 0,
     candidates: 0,
     verified: 0,
+    verificationAttempts: 0,
+    companyChecks: 0,
     eligible: 0,
     imported: 0,
     updated: 0,
@@ -477,18 +461,20 @@ function client(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-function defaultSearch(query: string, track: string) {
+function defaultSearch(query: string, track: string, maxToolCalls: number) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
-  return searchOpenAI({ query, track, apiKey, model: process.env.OPENAI_RESEARCH_MODEL });
+  return searchOpenAI({ query, track, apiKey, maxToolCalls, model: process.env.OPENAI_RESEARCH_MODEL });
 }
 
 async function workdayResponds(boardId: string, fetchImpl: typeof fetch): Promise<boolean> {
-  const [host, tenant, site] = boardId.split("/");
-  if (!host || !tenant || !site) return false;
+  const parsed = parseWorkdayBoard(boardId);
+  if (!parsed) return false;
+  const { host, tenant, site } = parsed;
   try {
     const response = await fetchImpl(`https://${host}/wday/cxs/${encodeURIComponent(tenant)}/${encodeURIComponent(site)}/jobs`, {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: {
         accept: "application/json",
         "content-type": "application/json",
@@ -546,15 +532,16 @@ async function loadCoverageCounts(db: SupabaseClient): Promise<Record<string, nu
   return counts;
 }
 
-async function loadKnownCompanies(db: SupabaseClient): Promise<{ name: string; website: string | null }[]> {
-  const { data } = await db.from("companies").select("name, website").eq("is_sample", false).limit(300);
-  return (data ?? []).map((row) => ({ name: String(row.name), website: row.website }));
+async function loadKnownCompanies(db: SupabaseClient): Promise<{ name: string; website: string | null; monitored: boolean; enabled: boolean }[]> {
+  const { data, error } = await db.from("companies").select("name, website, ats_provider, ats_board_id, enabled").eq("is_sample", false).limit(1000);
+  if (error) throw new Error(`Could not load known companies: ${error.message}`);
+  return (data ?? []).map((row) => ({ name: String(row.name), website: row.website, monitored: Boolean(row.ats_provider && row.ats_board_id), enabled: row.enabled }));
 }
 
-async function loadHistory(db: SupabaseClient): Promise<string[]> {
-  const { data, error } = await db.from("search_queries").select("query").order("ran_at", { ascending: false }).limit(80);
+async function loadHistory(db: SupabaseClient): Promise<{ query: string; ranAt: string }[]> {
+  const { data, error } = await db.from("search_queries").select("query, ran_at").order("ran_at", { ascending: false }).limit(80);
   if (error) return [];
-  return (data ?? []).map((row) => String(row.query));
+  return (data ?? []).map((row) => ({ query: String(row.query), ranAt: String(row.ran_at) }));
 }
 
 async function recordQuery(db: SupabaseClient, item: { track: string; query: string }, candidates: number): Promise<void> {

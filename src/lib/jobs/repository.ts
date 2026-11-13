@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildCoverageReport } from "@/lib/jobs/collect/coverage";
-import { watchlist } from "@/lib/jobs/collect/watchlist";
+import { watchlist, type WatchCompany, type AtsProvider } from "@/lib/jobs/collect/watchlist";
 import { sampleCompanies, sampleJobs } from "@/lib/jobs/demo";
 import { defaultSearchPreferences, isSearchPreferences } from "@/lib/jobs/profile";
 import { anonClient, databaseConfigured, pinConfigured, serviceClient } from "@/lib/jobs/supabase";
@@ -287,13 +287,24 @@ async function loadCoverage(
     .in("status", ["success", "partial"])
     .order("started_at", { ascending: false })
     .limit(12);
+  const { data: storedCompanies, error: companyError } = await db.from("companies")
+    .select("name, website, careers_url, ats_provider, ats_board_id, enabled, categories, geographic_relevance, why_interesting")
+    .eq("is_sample", false);
+  const providers = new Set(["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "workday"]);
+  const monitored: WatchCompany[] = companyError || !storedCompanies ? watchlist : storedCompanies.map((company) => ({
+    name: company.name, website: company.website, careersUrl: company.careers_url,
+    provider: providers.has(company.ats_provider) ? company.ats_provider as AtsProvider : null,
+    boardId: company.ats_board_id, enabled: company.enabled, categories: company.categories ?? [],
+    geographicRelevance: company.geographic_relevance ?? "", why: company.why_interesting ?? "",
+    region: company.careers_url?.includes("jobs.eu.lever.co") ? "eu" : "global",
+  }));
   const rows = data ?? [];
   const latestCollection = rows.find((row) => row.run_type === "collection");
   const latestResearch = rows.find((row) => row.run_type === "research");
   const collectionSummary = (latestCollection?.summary ?? null) as Parameters<typeof buildCoverageReport>[0]["collection"];
   const researchSummary = (latestResearch?.summary ?? null) as Parameters<typeof buildCoverageReport>[0]["research"];
   return buildCoverageReport({
-    companies: watchlist,
+    companies: monitored,
     collection: collectionSummary,
     collectionAt: collection?.completedAt ?? (latestCollection?.completed_at as string | null) ?? null,
     research: researchSummary,

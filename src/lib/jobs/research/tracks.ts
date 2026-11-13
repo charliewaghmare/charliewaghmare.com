@@ -5,7 +5,10 @@ export type ResearchTrack = {
   queries: string[];
 };
 
-const SEASONS = ["Summer 2027", "Fall 2027", "Winter 2028"];
+export function seasonsFor(now = new Date()): string[] {
+  const year = now.getUTCFullYear() + (now.getUTCMonth() >= 8 ? 1 : 0);
+  return [`Summer ${year}`, `Fall ${year}`, `Winter ${year + 1}`];
+}
 
 type TrackSeed = {
   id: string;
@@ -69,22 +72,27 @@ const SEEDS: TrackSeed[] = [
 
 const TERMS = ["internship", "co-op", "summer student", "industrial placement", "undergraduate"];
 
-export function queriesForTrack(seed: TrackSeed): string[] {
+export function queriesForTrack(seed: TrackSeed, now = new Date()): string[] {
+  const seasons = seasonsFor(now);
   const queries: string[] = [];
   seed.roles.forEach((role, index) => {
-    const season = SEASONS[index % SEASONS.length];
+    const season = seasons[index % seasons.length];
     const place = seed.places[index % seed.places.length];
     const term = TERMS[index % TERMS.length];
     queries.push(`${role} ${term} ${season} ${place}`);
   });
-  queries.push(`${seed.roles[0]} co-operative education ${SEASONS[0]} ${seed.places[0]}`);
-  queries.push(`${seed.roles[0]} university student ${SEASONS[2]} ${seed.places[1] ?? seed.places[0]}`);
+  queries.push(`${seed.roles[0]} co-operative education ${seasons[0]} ${seed.places[0]}`);
+  queries.push(`${seed.roles[0]} university student ${seasons[2]} ${seed.places[1] ?? seed.places[0]}`);
   return [...new Set(queries.map((query) => query.replace(/\s+/g, " ").trim()))];
 }
 
-export const RESEARCH_TRACKS: ResearchTrack[] = SEEDS.map((seed) => ({
-  id: seed.id,
-  label: seed.label,
-  interest: seed.interest,
-  queries: queriesForTrack(seed),
-}));
+export function researchTracks(now = new Date()): ResearchTrack[] {
+  return SEEDS.map((seed) => ({
+    id: seed.id,
+    label: seed.label,
+    interest: seed.interest,
+    queries: queriesForTrack(seed, now),
+  }));
+}
+
+export const RESEARCH_TRACKS = researchTracks();

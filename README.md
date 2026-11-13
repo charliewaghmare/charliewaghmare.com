@@ -1,6 +1,6 @@
 # Charlie Waghmare
 
-Personal site for [charliewaghmare.com](https://charliewaghmare.com). It is a small Next.js app: one landing page, plain TypeScript content, and no database or authentication.
+Personal site for [charliewaghmare.com](https://charliewaghmare.com). It is a Next.js app with a personal homepage, Garmin training views, and a Supabase-backed job discovery board.
 
 ## Local development
 
@@ -45,7 +45,7 @@ Until that variable is set, the pages show a labeled sample. A refresh asks Garm
 
 ## Jobs
 
-[charliewaghmare.com/jobs](https://charliewaghmare.com/jobs) is a personal job discovery board. Phase 1 is the dashboard, PIN edit mode, and Supabase schema. It does not search the web or score live postings. Until Supabase is connected, the page shows labeled sample listings with no application links.
+[charliewaghmare.com/jobs](https://charliewaghmare.com/jobs) is a personal job discovery board backed by Supabase, deterministic eligibility/scoring, daily public ATS collection and community-feed discovery, plus bounded AI web research. Until Supabase is connected, the page shows labeled sample listings with no application links.
 
 ### Environment variables
 
@@ -90,7 +90,7 @@ Add these GitHub Actions secrets on the repository. Use the same Supabase values
 
 Apply `supabase/migrations/20261112200000_jobs_collection.sql` after the Phase 1 migration. Until that runs, the collector cannot save listings.
 
-The active boards are the Greenhouse, Lever, and Ashby identifiers that were checked against the public APIs. Nike, ASICS, Garmin, and Spin Master stay on the watchlist as pending because they do not have one of those verified boards. The collector does not scrape Workday or career HTML.
+The collector supports Greenhouse, Lever, Ashby, SmartRecruiters, Workable and public Workday careers JSON. It combines seed boards with enabled boards stored in Supabase. Garmin and Spin Master remain pending. Community candidates are verified through employer APIs or structured data on employer career pages before publication. Verified unfamiliar ATS boards are enrolled automatically; this path uses no AI. See [reliability and operations](docs/jobs-reliability.md).
 
 Manual refresh from the dashboard dispatches that same workflow. It needs two Vercel variables:
 
@@ -105,11 +105,11 @@ When the database is connected, `/jobs` shows stored listings only. Sample cards
 
 Materials engineering is a high-interest field, alongside mechanical engineering, product development, motorsports, and running technology.
 
-Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `phase35-rules-v1`. The weights are unchanged. Summer analyst, industrial placement, and undergraduate research titles count as student evidence.
+Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `student-rules-v2`. The weights are unchanged. Summer analyst, industrial placement, and undergraduate research titles count as student evidence.
 
 ### Research
 
-Research does not run on a timer. It starts only when you search from the unlocked jobs page. That dispatches `.github/workflows/research-jobs.yml`. The workflow uses the OpenAI Responses API with the `web_search` tool (`gpt-6-astra` unless `OPENAI_RESEARCH_MODEL` is set).
+Research does not run on a timer. It starts only when you search from the unlocked jobs page. That dispatches `.github/workflows/research-jobs.yml`. The workflow uses the OpenAI Responses API with the `web_search` tool (`gpt-6-astra` unless `OPENAI_RESEARCH_MODEL` is set). The selected depth preset allows up to 4 model requests, 8 job verification attempts and 3 company checks/additions. Failed checks consume the verification budget, and depth-specific tool-call limits are passed to the API.
 
 Add these GitHub Actions secrets in addition to the collector secrets:
 
@@ -124,9 +124,9 @@ Web search is $10 per 1,000 calls on OpenAI's pricing page, plus model tokens. `
 
 The daily collector also reads verified SmartRecruiters boards, Nike's public Workday feed, and additional Greenhouse and Ashby boards that returned student postings. Workable's public API is implemented, but no target employer currently returns jobs from it, so none are monitored. iCIMS, campus login systems, and Handshake are not collected.
 
-The same collection run reads the MIT-licensed `listings.json` from [internship-radar](https://github.com/IS-tib/internship-radar). It keeps direct employer links, skips shortened links, and does not replace a posting already saved from Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or Workday. Simplify's listings file has no license, so it is not imported. This pass does not call a language model.
+The same collection run reads the MIT-licensed `listings.json` from [internship-radar](https://github.com/IS-tib/internship-radar). It treats feed rows as candidates, skips shortened links, and verifies candidates before saving employer evidence. It checks at most 8 unfamiliar/failed/limited ATS boards and 20 custom pages per run, rotating the selection daily. Successful snapshots are reused, and employer records are protected from incoming web records in both collection and research. Simplify's listings file has no license, so it is not imported. This pass does not call a language model.
 
-Unlock `/jobs` and use Custom research on Discover to run one search. Pick Quick, Standard, or Deep. Those are approximate ceilings of $0.10, $0.35, and $0.75. The page records the request and asks GitHub Actions to run `research-jobs.yml` with the query, depth, and run id. Refresh jobs still collects boards only and does not start AI research. A workflow run with no search text does not call the model.
+Unlock `/jobs` and use Custom research on Discover to run one search. Pick Quick, Standard, or Deep. Those are approximate ceilings of $0.10, $0.35, and $0.75. The page records the request and asks GitHub Actions to run `research-jobs.yml` with the query, depth, and run id. Refresh jobs collects employer boards and verifies community-feed candidates without AI. A workflow run with no search text does not call the model.
 
 ## Deploy on Vercel
 

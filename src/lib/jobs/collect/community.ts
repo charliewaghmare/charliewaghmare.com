@@ -96,6 +96,7 @@ export async function loadCommunityFeed(
   now = new Date(),
 ): Promise<CommunityBatch> {
   const response = await fetchImpl(RADAR_LISTINGS_URL, {
+    signal: AbortSignal.timeout(20_000),
     headers: { accept: "application/json", "user-agent": "charliewaghmare-jobs/1.0" },
   });
   if (!response.ok) {
@@ -107,7 +108,7 @@ export async function loadCommunityFeed(
 function listingsFrom(payload: unknown): RadarListing[] {
   if (!payload || typeof payload !== "object") return [];
   const listings = (payload as { listings?: unknown }).listings;
-  if (!Array.isArray(listings)) return [];
+  if (!Array.isArray(listings)) throw new Error("internship-radar payload is missing listings.");
   return listings.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;
@@ -152,8 +153,8 @@ type RadarListing = {
 
 function toPosting(row: RadarListing, url: string): CollectedPosting {
   const location = row.location;
-  let country = inferCountry(location);
-  if (!country) country = "United States";
+  const country = inferCountry(location);
+
   const termNote = row.term_inferred
     ? "The feed inferred a term from the posting date, so that term is not treated as verified."
     : row.term
@@ -161,6 +162,7 @@ function toPosting(row: RadarListing, url: string): CollectedPosting {
       : "";
   return {
     provider: "web",
+    provenance: "internship-radar",
     sourceId: `radar:${(row.identity ?? url).slice(0, 180)}`,
     title: row.title,
     companyName: row.company,
