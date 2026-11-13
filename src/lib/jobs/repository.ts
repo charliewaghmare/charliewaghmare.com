@@ -62,6 +62,7 @@ type StatusRow = {
   saved: boolean;
   applied: boolean;
   applied_on: string | null;
+  saved_at?: string | null;
   notes: string | null;
   stage: ApplicationStage | null;
 };
@@ -149,8 +150,9 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
           .limit(20),
         service
           .from("search_runs")
-          .select("id, prompt, started_at, status")
-          .eq("run_type", "custom_search")
+          .select("id, prompt, started_at, status, added_count, summary")
+          .eq("run_type", "research")
+          .not("prompt", "is", null)
           .order("started_at", { ascending: false })
           .limit(8),
         service
@@ -188,6 +190,8 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
       prompt: string | null;
       started_at: string;
       status: string;
+      added_count: number | null;
+      summary: { depth?: string; estimatedUsd?: number | null } | null;
     }[])
       .filter((row) => row.prompt)
       .map((row) => ({
@@ -195,6 +199,9 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
         prompt: row.prompt ?? "",
         createdAt: row.started_at,
         status: row.status,
+        depth: row.summary?.depth ?? null,
+        added: row.added_count,
+        cost: row.summary?.estimatedUsd ?? null,
       }));
     lastSuccessfulRefresh =
       (refreshResult.data as { completed_at: string | null } | null)?.completed_at ?? null;
@@ -415,6 +422,7 @@ function toJob(row: JobRow, status: StatusRow | null, unlocked: boolean): JobLis
     saved: unlocked ? Boolean(status?.saved) : false,
     applied: unlocked ? Boolean(status?.applied) : false,
     appliedOn: unlocked ? status?.applied_on ?? null : null,
+    savedAt: unlocked ? status?.saved_at ?? null : null,
     stage: unlocked ? status?.stage ?? null : null,
     notes: unlocked ? status?.notes ?? null : null,
     lifecycleStatus: row.lifecycle_status ?? "active",
@@ -539,7 +547,7 @@ export async function writeJobStatus(input: {
     .select("id, active")
     .eq("id", input.jobId)
     .maybeSingle();
-  if (jobError || !job || !job.active) {
+  if (jobError || !job) {
     return { ok: false, status: 404, message: "That listing is not in the active feed." };
   }
 
@@ -548,25 +556,35 @@ export async function writeJobStatus(input: {
     .select("*")
     .eq("job_id", input.jobId)
     .maybeSingle();
+  if (!job.active && !existing) {
+    return { ok: false, status: 404, message: "That listing is not in the active feed." };
+  }
   const current = (existing ?? {}) as Partial<StatusRow>;
   const applied = input.applied ?? current.applied ?? false;
+  const saved = input.saved ?? current.saved ?? false;
+  const nowIso = new Date().toISOString();
   const next = {
     job_id: input.jobId,
-    saved: input.saved ?? current.saved ?? false,
+    saved,
     applied,
-    applied_on: applied ? input.appliedOn ?? current.applied_on ?? today() : null,
+    applied_on: applied ? input.appliedOn ?? current.applied_on ?? vancouverToday() : null,
     notes: input.notes === undefined ? current.notes ?? null : input.notes,
     stage: applied ? input.stage ?? current.stage ?? "applied" : null,
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
+    saved_at: saved ? current.saved_at ?? nowIso : current.saved_at ?? null,
   };
-  const { error } = await service.from("user_job_status").upsert(next);
+  let { error } = await service.from("user_job_status").upsert(next);
+  if (error && /saved_at/.test(error.message)) {
+    const withoutSavedAt = Object.fromEntries(Object.entries(next).filter(([key]) => key !== "saved_at"));
+    error = (await service.from("user_job_status").upsert(withoutSavedAt)).error;
+  }
   if (error) return { ok: false, status: 500, message: "Could not save that change." };
   return { ok: true };
 }
 
 export async function ignoreJob(
   jobId: string,
-): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+): Promise<{ ok: true; suppressionId: string } | { ok: false; status: number; message: string }> {
   const service = serviceClient();
   if (!service) return { ok: false, status: 503, message: "Database is not configured." };
   const { data: job, error } = await service
@@ -576,21 +594,33 @@ export async function ignoreJob(
     .maybeSingle();
   if (error || !job) return { ok: false, status: 404, message: "Listing not found." };
 
-  const { error: suppressionError } = await service.from("job_suppressions").insert({
-    job_id: job.id,
-    source: job.source,
-    source_id: job.source_id,
-    source_url: job.source_url,
-  });
-  if (suppressionError) {
-    return { ok: false, status: 500, message: "Could not record the suppression." };
+  const { data: created, error: suppressionError } = await service
+    .from("job_suppressions")
+    .insert({
+      job_id: job.id,
+      source: job.source,
+      source_id: job.source_id,
+      source_url: job.source_url,
+    })
+    .select("id")
+    .single();
+  if (suppressionError || !created) {
+    const { data: existing } = await service
+      .from("job_suppressions")
+      .select("id")
+      .eq("job_id", job.id)
+      .limit(1)
+      .maybeSingle();
+    if (!existing?.id) return { ok: false, status: 500, message: "Could not record the suppression." };
+    await service.from("jobs").update({ active: false, updated_at: new Date().toISOString() }).eq("id", jobId);
+    return { ok: true, suppressionId: existing.id as string };
   }
   const { error: updateError } = await service
     .from("jobs")
     .update({ active: false, updated_at: new Date().toISOString() })
     .eq("id", jobId);
   if (updateError) return { ok: false, status: 500, message: "Could not hide the listing." };
-  return { ok: true };
+  return { ok: true, suppressionId: created.id as string };
 }
 
 export async function undoIgnore(
@@ -635,27 +665,123 @@ export async function savePreferences(
   return { ok: true };
 }
 
-export async function storeCustomSearch(
-  prompt: string,
-): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+export async function requestCustomResearch(input: {
+  prompt: string;
+  depth: "quick" | "standard" | "deep";
+}): Promise<{ ok: true; runId: string } | { ok: false; status: number; message: string }> {
   const service = serviceClient();
   if (!service) return { ok: false, status: 503, message: "Database is not configured." };
+  const cutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+  const { data: running } = await service
+    .from("search_runs")
+    .select("id")
+    .eq("run_type", "research")
+    .in("status", ["requested", "running"])
+    .gte("started_at", cutoff)
+    .limit(1);
+  if (running && running.length > 0) {
+    return { ok: false, status: 409, message: "A research run is already in progress." };
+  }
   const now = new Date().toISOString();
-  const { error } = await service.from("search_runs").insert({
-    started_at: now,
-    completed_at: now,
-    run_type: "custom_search",
-    status: "not_implemented",
-    prompt,
-    error: "Custom search is stored only. Live research is not implemented.",
-  });
-  if (error) return { ok: false, status: 500, message: "Could not store that search." };
-  return { ok: true };
+  const { data: created, error } = await service
+    .from("search_runs")
+    .insert({
+      started_at: now,
+      run_type: "research",
+      status: "requested",
+      prompt: input.prompt,
+      summary: { depth: input.depth },
+    })
+    .select("id")
+    .single();
+  if (error || !created) return { ok: false, status: 500, message: "Could not record the research request." };
+  const token = process.env.JOBS_GITHUB_DISPATCH_TOKEN;
+  const repository = process.env.JOBS_GITHUB_REPOSITORY;
+  if (!token || !repository || !/^[\w.-]+\/[\w.-]+$/.test(repository)) {
+    await service
+      .from("search_runs")
+      .update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        error: "GitHub dispatch is not configured.",
+      })
+      .eq("id", created.id);
+    return {
+      ok: false,
+      status: 501,
+      message: "Research was not started. Add the GitHub dispatch token used by Refresh jobs.",
+    };
+  }
+  const response = await fetch(
+    `https://api.github.com/repos/${repository}/actions/workflows/research-jobs.yml/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-github-api-version": "2022-11-28",
+      },
+      body: JSON.stringify({
+        ref: "main",
+        inputs: { query: input.prompt, depth: input.depth, run_id: created.id },
+      }),
+    },
+  );
+  if (!response.ok) {
+    await service
+      .from("search_runs")
+      .update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        error: `GitHub dispatch failed (${response.status}).`,
+      })
+      .eq("id", created.id);
+    return { ok: false, status: 502, message: "GitHub did not accept the research request." };
+  }
+  return { ok: true, runId: created.id as string };
 }
 
-function today(): string {
+export async function readResearchRun(id: string): Promise<
+  | {
+      ok: true;
+      run: {
+        id: string;
+        status: string;
+        prompt: string | null;
+        startedAt: string;
+        completedAt: string | null;
+        error: string | null;
+        summary: Record<string, unknown> | null;
+      };
+    }
+  | { ok: false; status: number; message: string }
+> {
+  const service = serviceClient();
+  if (!service) return { ok: false, status: 503, message: "Database is not configured." };
+  const { data, error } = await service
+    .from("search_runs")
+    .select("id, status, prompt, started_at, completed_at, error, summary")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return { ok: false, status: 404, message: "Research run not found." };
+  return {
+    ok: true,
+    run: {
+      id: data.id as string,
+      status: data.status as string,
+      prompt: (data.prompt as string | null) ?? null,
+      startedAt: data.started_at as string,
+      completedAt: (data.completed_at as string | null) ?? null,
+      error: (data.error as string | null) ?? null,
+      summary: (data.summary as Record<string, unknown> | null) ?? null,
+    },
+  };
+}
+
+function vancouverToday(): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Toronto",
+    timeZone: "America/Vancouver",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

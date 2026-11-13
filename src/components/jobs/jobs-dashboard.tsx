@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CustomSearch } from "@/components/jobs/custom-search";
 import { JobCard } from "@/components/jobs/job-card";
 import { formatTimestamp } from "@/lib/jobs/format";
-import { defaultJobFilters, filterJobs, uniqueSorted, type JobFilters } from "@/lib/jobs/filter";
+import { defaultJobFilters, filterJobs, sortShortlist, uniqueSorted, type JobFilters } from "@/lib/jobs/filter";
+import { appliedThisWeek, pageOf } from "@/lib/jobs/progress";
 import { weightsTotal } from "@/lib/jobs/profile";
 import { safeHttpUrl, type JobsPageModel, type SearchPreferences } from "@/lib/jobs/types";
 
@@ -28,6 +30,10 @@ export function JobsDashboard({
   const [busy, setBusy] = useState(false);
   const [preferences, setPreferences] = useState<SearchPreferences | null>(model.preferences);
   const [searchPrompt, setSearchPrompt] = useState("");
+  const [undo, setUndo] = useState<{ id: string; title: string } | null>(null);
+  const filterKey = `${view}:${JSON.stringify(filters)}`;
+  const [shownState, setShownState] = useState({ key: filterKey, shown: 12 });
+  const shown = shownState.key === filterKey ? shownState.shown : 12;
 
   const discoveryJobs = useMemo(
     () => model.jobs.filter((job) => job.inDiscovery !== false),
@@ -40,7 +46,8 @@ export function JobsDashboard({
         : view === "applied"
           ? model.jobs.filter((job) => job.applied)
           : discoveryJobs;
-    return filterJobs(scoped, filters);
+    const matched = filterJobs(scoped, view === "saved" ? { ...filters, sort: "discovered" } : filters);
+    return view === "saved" ? sortShortlist(matched) : matched;
   }, [discoveryJobs, filters, model.jobs, view]);
 
   const tags = uniqueSorted(discoveryJobs.flatMap((job) => job.tags));
@@ -52,6 +59,10 @@ export function JobsDashboard({
   recentCutoff.setUTCDate(recentCutoff.getUTCDate() - 7);
   const recentIso = recentCutoff.toISOString().slice(0, 10);
   const newCount = discoveryJobs.filter((job) => job.discoveredOn >= recentIso).length;
+  const toApplyCount = model.jobs.filter((job) => job.saved && !job.applied).length;
+  const appliedJobs = model.jobs.filter((job) => job.applied);
+  const appliedWeekCount = appliedJobs.filter((job) => appliedThisWeek(job.appliedOn)).length;
+  const page = pageOf(visibleJobs, shown);
 
   async function callApi(
     path: string,
@@ -66,15 +77,25 @@ export function JobsDashboard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        suppressionId?: string;
+      } | null;
       if (!response.ok) {
         setMessage(payload?.message ?? "That action did not save.");
-        return;
+        return null;
       }
+      if (payload?.suppressionId) {
+        const ignored = model.jobs.find((job) => job.id === body.jobId);
+        setUndo({ id: payload.suppressionId, title: ignored?.title ?? "That listing" });
+      }
+      if (method === "DELETE" && path === "/api/jobs/suppress") setUndo(null);
       if (payload?.message) setMessage(payload.message);
       router.refresh();
+      return payload;
     } catch {
       setMessage("The request did not finish.");
+      return null;
     } finally {
       setBusy(false);
     }
@@ -173,16 +194,39 @@ export function JobsDashboard({
             {message}
           </p>
         ) : null}
+        {undo ? (
+          <p className="mt-4 flex flex-wrap items-center gap-3 text-sm leading-6" role="status">
+            <span>Ignored {undo.title}.</span>
+            <button
+              type="button"
+              className="jd-button"
+              disabled={busy}
+              onClick={() => void callApi("/api/jobs/suppress", { suppressionId: undo.id }, "DELETE")}
+            >
+              Undo
+            </button>
+          </p>
+        ) : null}
       </header>
 
       <section className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
         <Metric label="Active opportunities" value={String(activeCount)} />
-        <Metric label="Strong matches" value={String(strongCount)} />
-        <Metric label="New discoveries" value={String(newCount)} />
-        <Metric
-          label="Last successful refresh"
-          value={formatTimestamp(model.lastSuccessfulRefresh) ?? "Not yet run"}
-        />
+        {unlocked ? (
+          <>
+            <Metric label="To apply" value={String(toApplyCount)} />
+            <Metric label="Applied this week" value={String(appliedWeekCount)} />
+            <Metric label="Applied total" value={String(appliedJobs.length)} />
+          </>
+        ) : (
+          <>
+            <Metric label="Strong matches" value={String(strongCount)} />
+            <Metric label="New discoveries" value={String(newCount)} />
+            <Metric
+              label="Last successful refresh"
+              value={formatTimestamp(model.lastSuccessfulRefresh) ?? "Not yet run"}
+            />
+          </>
+        )}
       </section>
       {model.collection ? (
         <p className="td-muted mt-4 text-sm leading-6">
@@ -212,7 +256,7 @@ export function JobsDashboard({
             aria-current={view === item ? "page" : undefined}
             onClick={() => setView(item)}
           >
-            {labelView(item)}
+            {labelView(item, unlocked)}
           </button>
         ))}
         {unlocked
@@ -224,7 +268,7 @@ export function JobsDashboard({
                 aria-current={view === item ? "page" : undefined}
                 onClick={() => setView(item)}
               >
-                {labelView(item)}
+                {labelView(item, unlocked)}
               </button>
             ))
           : null}
@@ -250,6 +294,14 @@ export function JobsDashboard({
         />
       ) : (
         <section className="mt-8">
+          {unlocked && view === "discover" ? (
+            <CustomSearch
+              history={model.customSearches}
+              busy={busy}
+              onBusy={setBusy}
+              onFinished={() => router.refresh()}
+            />
+          ) : null}
           <Filters
             filters={filters}
             tags={tags}
@@ -257,23 +309,36 @@ export function JobsDashboard({
             terms={terms}
             onChange={setFilters}
           />
-          {visibleJobs.length === 0 ? (
+          <p className="td-muted mt-4 text-sm">
+            {page.total === 0 ? "No matches" : `Showing ${page.visible.length} of ${page.total}`}
+          </p>
+          {page.total === 0 ? (
             <p className="td-card td-muted mt-4 px-4 py-8 text-sm leading-6">
               Nothing matches these filters. Lower the score threshold or clear a category.
             </p>
           ) : (
             <div className="mt-4 grid gap-3">
-              {visibleJobs.map((job) => (
+              {page.visible.map((job) => (
                 <JobCard
                   key={job.id}
                   job={job}
                   unlocked={unlocked}
+                  shortlist={view === "saved"}
                   expanded={expandedId === job.id}
                   busy={busy}
                   onToggle={() => setExpandedId((current) => (current === job.id ? null : job.id))}
                   onAction={callApi}
                 />
               ))}
+              {page.hasMore ? (
+                <button
+                  type="button"
+                  className="jd-button"
+                  onClick={() => setShownState({ key: filterKey, shown: shown + 12 })}
+                >
+                  Show more
+                </button>
+              ) : null}
             </div>
           )}
         </section>
@@ -561,7 +626,7 @@ function SettingsPanel({
       <section className="td-card p-4 sm:p-5">
         <h2 className="type-section text-[1.15rem]">Custom search</h2>
         <p className="td-muted mt-2 text-sm leading-6">
-          Write a note for a later manual research pass. Scheduled research runs on its own. This box does not search the web.
+          Custom research runs from Discover while edit mode is unlocked. Scheduled research still runs on its own.
         </p>
         <textarea
           className="jd-input mt-4 min-h-28"
@@ -667,9 +732,9 @@ function CoveragePanel({ coverage }: { coverage: NonNullable<JobsPageModel["cove
   );
 }
 
-function labelView(view: View): string {
+function labelView(view: View, unlocked: boolean): string {
   if (view === "discover") return "Discover";
-  if (view === "saved") return "Saved";
+  if (view === "saved") return unlocked ? "To Apply" : "Saved";
   if (view === "applied") return "Applied";
   if (view === "companies") return "Companies";
   return "Settings";

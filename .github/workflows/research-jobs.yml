@@ -12,11 +12,19 @@ on:
         description: Optional single search, such as motorsports engineering internships
         required: false
         type: string
+      depth:
+        description: quick, standard, or deep. Leave empty for the scheduled budget.
+        required: false
+        type: string
+      run_id:
+        description: Existing research run id, when started from the dashboard
+        required: false
+        type: string
 
 jobs:
   research:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +36,8 @@ jobs:
         env:
           RESEARCH_TRIGGER: ${{ github.event_name }}
           RESEARCH_QUERY: ${{ inputs.query }}
+          RESEARCH_DEPTH: ${{ inputs.depth }}
+          RESEARCH_RUN_ID: ${{ inputs.run_id }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_RESEARCH_MODEL: ${{ secrets.OPENAI_RESEARCH_MODEL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

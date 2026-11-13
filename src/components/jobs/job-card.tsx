@@ -16,6 +16,7 @@ export function JobCard({
   job,
   unlocked,
   expanded,
+  shortlist = false,
   onToggle,
   onAction,
   busy,
@@ -23,6 +24,7 @@ export function JobCard({
   job: JobListing;
   unlocked: boolean;
   expanded: boolean;
+  shortlist?: boolean;
   onToggle: () => void;
   onAction: (path: string, body: Record<string, unknown>, method?: "POST" | "DELETE") => void;
   busy: boolean;
@@ -102,7 +104,7 @@ export function JobCard({
               disabled={busy}
               onClick={() => onAction("/api/jobs/status", { jobId: job.id, saved: !job.saved })}
             >
-              {job.saved ? "Unsave" : "Save"}
+              {job.saved ? (shortlist ? "Remove from shortlist" : "Unsave") : "Save"}
             </button>
             <button
               type="button"

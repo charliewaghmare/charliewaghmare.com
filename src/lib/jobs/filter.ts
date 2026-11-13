@@ -1,5 +1,16 @@
 import type { JobListing, WorkArrangement } from "@/lib/jobs/types";
 
+export function sortShortlist(jobs: JobListing[]): JobListing[] {
+  return [...jobs].sort((left, right) => {
+    if (left.deadline && right.deadline) return left.deadline.localeCompare(right.deadline) || right.matchScore - left.matchScore;
+    if (left.deadline) return -1;
+    if (right.deadline) return 1;
+    const leftSaved = left.savedAt ?? left.discoveredOn;
+    const rightSaved = right.savedAt ?? right.discoveredOn;
+    return rightSaved.localeCompare(leftSaved) || right.matchScore - left.matchScore;
+  });
+}
+
 export type JobSort = "score" | "discovered" | "posted" | "company";
 
 export type JobFilters = {

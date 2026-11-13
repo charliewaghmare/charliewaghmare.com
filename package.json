@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:jobs": "tsx --test src/lib/jobs/collect/collect.test.ts src/lib/jobs/collect/relevance.test.ts src/lib/jobs/research/research.test.ts src/lib/jobs/security.test.ts",
+    "test:jobs": "tsx --test src/lib/jobs/collect/collect.test.ts src/lib/jobs/collect/relevance.test.ts src/lib/jobs/research/research.test.ts src/lib/jobs/research/custom.test.ts src/lib/jobs/security.test.ts",
     "collect": "tsx scripts/collect-jobs.ts",
     "research": "tsx scripts/research-jobs.ts"
   },

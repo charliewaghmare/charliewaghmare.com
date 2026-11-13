@@ -6,7 +6,9 @@ const query = queryFlag >= 0 ? process.argv[queryFlag + 1] : process.env.RESEARC
 runResearch({
   trigger: process.env.RESEARCH_TRIGGER ?? "manual",
   dryRun: process.argv.includes("--dry-run"),
-  query: query ?? null,
+  query: query?.trim() ? query.trim() : null,
+  depth: process.env.RESEARCH_DEPTH?.trim() || null,
+  runId: process.env.RESEARCH_RUN_ID?.trim() || null,
 })
   .then((summary) => {
     if (!summary) return;

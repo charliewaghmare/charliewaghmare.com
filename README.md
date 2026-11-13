@@ -75,7 +75,7 @@ Apply `supabase/migrations/20261112120000_jobs_phase1.sql` in the Supabase SQL e
 
 PIN attempts are stored in `pin_attempts`. Five failures from one network, or twenty failures overall, lock attempts for 15 minutes.
 
-Edit mode lasts seven days. Lock ends it immediately. Custom search notes are stored only. They do not research the web.
+Edit mode lasts seven days. Lock ends it immediately. Apply `supabase/migrations/20261113040000_jobs_phase4a.sql` so saved jobs keep a saved time for the To Apply shortlist. Until that migration runs, saving still works and the shortlist falls back to the discovery date.
 
 ### Collection
 
@@ -124,7 +124,7 @@ Web search is $10 per 1,000 calls on OpenAI's pricing page, plus model tokens. `
 
 The daily collector also reads verified SmartRecruiters boards and Nike's public Workday feed. Workable's public API is implemented, but no target employer currently returns jobs from it, so none are monitored. iCIMS, campus login systems, and Handshake are not collected.
 
-The dashboard does not start research. Run the workflow manually for a one-off search, and pass the `query` input when you want a single topic. Custom search notes on the page are still not executed.
+Unlock `/jobs` and use Custom research on Discover to run one search. Pick Quick, Standard, or Deep. Those are approximate ceilings of $0.10, $0.35, and $0.75. The page records the request and asks GitHub Actions to run `research-jobs.yml` with the query, depth, and run id. Refresh jobs still collects boards only. A manual run from Actions can leave depth empty; a query without a depth uses the Quick query plan and the scheduled call ceiling.
 
 ## Deploy on Vercel
 

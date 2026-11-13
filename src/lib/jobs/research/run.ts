@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { detectAts, sameCompany, sameRequisition } from "@/lib/jobs/research/ats";
 import { addUsage, estimateResearchUsd, researchLimits, type Usage } from "@/lib/jobs/research/budget";
+import { DEPTH_LIMITS, customScope, parseDepth, planCustomQueries, type ResearchDepth } from "@/lib/jobs/research/depth";
 import { searchOpenAI, DEFAULT_RESEARCH_MODEL } from "@/lib/jobs/research/openai";
 import { planResearch } from "@/lib/jobs/research/plan";
 import { screenCandidate } from "@/lib/jobs/research/screen";
@@ -25,11 +26,25 @@ export type ResearchSummary = {
   duplicates: number;
   companiesDiscovered: number;
   companiesAdded: number;
+  companiesWithoutOpenings: number;
   screenedOut: number;
   boardsEnabled: number;
+  belowThreshold: number;
+  withheld: number;
   errors: string[];
   estimatedUsd: number | null;
+  depth: ResearchDepth | null;
+  results: ResearchResult[];
   usage: Usage;
+};
+
+export type ResearchResult = {
+  title: string;
+  employer: string;
+  url: string | null;
+  score: number;
+  outcome: "inserted" | "updated" | "duplicate" | "eligible";
+  belowThreshold: boolean;
 };
 
 type SearchFn = (query: string, track: string) => Promise<{ findings: ResearchFindings; usage: Usage }>;
@@ -39,6 +54,8 @@ export async function runResearch(options: {
   now?: Date;
   dryRun?: boolean;
   query?: string | null;
+  depth?: string | null;
+  runId?: string | null;
   search?: SearchFn;
   fetchImpl?: typeof fetch;
   history?: string[];
@@ -50,20 +67,30 @@ export async function runResearch(options: {
     return null;
   }
   const started = Date.now();
-  const limits = researchLimits();
-  const summary = emptySummary();
+  const depth = parseDepth(options.depth);
+  const limits = depth ? DEPTH_LIMITS[depth] : researchLimits();
+  const summary = emptySummary(depth);
   const db = options.db === undefined ? (options.dryRun ? null : client()) : options.db;
-  const history = options.history ?? (db ? await loadHistory(db) : []);
-  const coverage = db ? await loadCoverageCounts(db) : {};
+  if (db && options.runId && !options.dryRun) {
+    const claimed = await claimRun(db, options.runId);
+    if (!claimed) {
+      console.log("Research run was already claimed.");
+      return null;
+    }
+  }
+  const history = options.history ?? (db && !options.query ? await loadHistory(db) : []);
+  const coverage = db && !options.query ? await loadCoverageCounts(db) : {};
   const knownCompanies = db ? await loadKnownCompanies(db) : [];
-  const planned = planResearch({
-    history,
-    focus: options.query,
-    now,
-    coverage,
-    tracksPerRun: limits.tracksPerRun,
-    queriesPerTrack: limits.queriesPerTrack,
-  });
+  const scope = options.query ? customScope(options.query) : { allowInternational: false };
+  const planned = options.query
+    ? planCustomQueries(options.query, depth ?? "quick")
+    : planResearch({
+        history,
+        now,
+        coverage,
+        tracksPerRun: researchLimits().tracksPerRun,
+        queriesPerTrack: researchLimits().queriesPerTrack,
+      });
   const search = options.search ?? defaultSearch;
   const fetchImpl = options.fetchImpl ?? fetch;
   const model = process.env.OPENAI_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
@@ -84,8 +111,18 @@ export async function runResearch(options: {
       summary.usage = addUsage(summary.usage, result.usage);
       summary.searchCalls += result.usage.searchCalls;
       summary.candidates += result.findings.jobs.length;
-      await ingestFindings(db, result.findings, summary, fetchImpl, options.dryRun === true, knownCompanies, limits.maxCandidates);
-      if (db && !options.dryRun) await recordQuery(db, item, result.findings.jobs.length);
+      await ingestFindings(
+        db,
+        result.findings,
+        summary,
+        fetchImpl,
+        options.dryRun === true,
+        knownCompanies,
+        limits.maxCandidates,
+        limits.maxCompanyAdds,
+        scope.allowInternational,
+      );
+      if (db && !options.dryRun && !options.query) await recordQuery(db, item, result.findings.jobs.length);
     } catch (error) {
       searchFailures += 1;
       summary.errors.push(error instanceof Error ? error.message : "Research query failed.");
@@ -98,7 +135,7 @@ export async function runResearch(options: {
       : searchFailures > 0
         ? "partial"
         : "success";
-  if (!options.dryRun && db) await recordRun(db, summary, status);
+  if (!options.dryRun && db) await recordRun(db, summary, status, options.runId ?? null, options.query ?? null);
   return summary;
 }
 
@@ -110,6 +147,8 @@ async function ingestFindings(
   dryRun: boolean,
   knownCompanies: { name: string; website: string | null }[],
   maxCandidates: number,
+  maxCompanyAdds: number,
+  allowInternational: boolean,
 ): Promise<void> {
   const seenUrls = new Set<string>();
   for (const job of findings.jobs) {
@@ -127,21 +166,33 @@ async function ingestFindings(
     }
     summary.verified += 1;
     const posting = checked.posting;
-    const assessment = assessPosting(posting);
+    const assessment = assessPosting(posting, new Date(), { allowInternational });
     if (!assessment.publish) {
       if (assessment.status === "uncertain") summary.uncertain += 1;
+      else if (assessment.status === "eligible_student_role") summary.withheld += 1;
       else summary.rejectedProfessional += 1;
       continue;
     }
     summary.eligible += 1;
-    if (dryRun || !db) continue;
-    const outcome = await saveJob(db, posting, assessment.score, assessment);
+    const below = assessment.score < 50;
+    if (below) summary.belowThreshold += 1;
+    const outcome = dryRun || !db ? "eligible" : await saveJob(db, posting, assessment.score, assessment);
     if (outcome === "duplicate") summary.duplicates += 1;
     if (outcome === "inserted") summary.imported += 1;
     if (outcome === "updated") summary.updated += 1;
+    if (summary.results.length < 16) {
+      summary.results.push({
+        title: posting.title,
+        employer: posting.companyName,
+        url: posting.sourceUrl,
+        score: assessment.score,
+        outcome,
+        belowThreshold: below,
+      });
+    }
   }
   for (const company of findings.companies) {
-    if (summary.companiesAdded >= researchLimits().maxCompanyAdds) break;
+    if (summary.companiesAdded >= maxCompanyAdds) break;
     summary.companiesDiscovered += 1;
     if (knownCompanies.some((known) => sameCompany(known, company))) {
       summary.errors.push(`${company.name}: Already monitored, so company research was reused.`);
@@ -155,11 +206,13 @@ async function ingestFindings(
     if (dryRun || !db) {
       summary.companiesAdded += 1;
       if (verified.board) summary.boardsEnabled += 1;
+      else summary.companiesWithoutOpenings += 1;
       continue;
     }
     const added = await saveCompany(db, company, verified);
     if (added.added) summary.companiesAdded += 1;
     if (added.board) summary.boardsEnabled += 1;
+    else if (added.added) summary.companiesWithoutOpenings += 1;
   }
 }
 
@@ -379,7 +432,7 @@ async function ensureCompany(
   return created.id as string;
 }
 
-function emptySummary(): ResearchSummary {
+function emptySummary(depth: ResearchDepth | null = null): ResearchSummary {
   return {
     queries: 0,
     searchCalls: 0,
@@ -393,12 +446,28 @@ function emptySummary(): ResearchSummary {
     duplicates: 0,
     companiesDiscovered: 0,
     companiesAdded: 0,
+    companiesWithoutOpenings: 0,
     screenedOut: 0,
     boardsEnabled: 0,
+    belowThreshold: 0,
+    withheld: 0,
     errors: [],
     estimatedUsd: null,
+    depth,
+    results: [],
     usage: { inputTokens: 0, outputTokens: 0, searchCalls: 0 },
   };
+}
+
+async function claimRun(db: SupabaseClient, runId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from("search_runs")
+    .update({ status: "running" })
+    .eq("id", runId)
+    .eq("status", "requested")
+    .select("id");
+  if (error) return false;
+  return Array.isArray(data) && data.length > 0;
 }
 
 function client(): SupabaseClient {
@@ -493,9 +562,14 @@ async function recordQuery(db: SupabaseClient, item: { track: string; query: str
   if (error) console.error("Could not store the search query.");
 }
 
-async function recordRun(db: SupabaseClient, summary: ResearchSummary, status: string): Promise<void> {
-  await db.from("search_runs").insert({
-    started_at: new Date().toISOString(),
+async function recordRun(
+  db: SupabaseClient,
+  summary: ResearchSummary,
+  status: string,
+  runId: string | null,
+  prompt: string | null,
+): Promise<void> {
+  const row = {
     completed_at: new Date().toISOString(),
     run_type: "research",
     status,
@@ -507,5 +581,14 @@ async function recordRun(db: SupabaseClient, summary: ResearchSummary, status: s
       ...summary,
       errors: summary.errors.slice(0, 8),
     },
+  };
+  if (runId) {
+    await db.from("search_runs").update(row).eq("id", runId);
+    return;
+  }
+  await db.from("search_runs").insert({
+    ...row,
+    started_at: new Date().toISOString(),
+    prompt,
   });
 }

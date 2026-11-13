@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   }
   const result = await ignoreJob(body.jobId);
   if (!result.ok) return failure(result);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, suppressionId: result.suppressionId });
 }
 
 export async function DELETE(request: Request) {

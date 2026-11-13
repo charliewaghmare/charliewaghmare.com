@@ -50,6 +50,7 @@ export type JobListing = {
   saved: boolean;
   applied: boolean;
   appliedOn: string | null;
+  savedAt?: string | null;
   stage: ApplicationStage | null;
   notes: string | null;
   lifecycleStatus?: "active" | "stale" | "closed" | null;
@@ -121,6 +122,9 @@ export type StoredSearch = {
   prompt: string;
   createdAt: string;
   status: string;
+  depth: string | null;
+  added: number | null;
+  cost: number | null;
 };
 
 export type CollectionStatus = {

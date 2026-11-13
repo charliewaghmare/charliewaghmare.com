@@ -157,7 +157,11 @@ export function scorePosting(posting: CollectedPosting, now = new Date()): {
   };
 }
 
-export function assessPosting(posting: CollectedPosting, now = new Date()): Assessment {
+export function assessPosting(
+  posting: CollectedPosting,
+  now = new Date(),
+  options?: { allowInternational?: boolean },
+): Assessment {
   const title = posting.title.toLowerCase();
   const description = posting.description.toLowerCase();
   const studentTitle = studentTitleEvidence(title);
@@ -212,7 +216,7 @@ export function assessPosting(posting: CollectedPosting, now = new Date()): Asse
         categories,
       });
     }
-    if (isInternational(posting) && !highInterest) {
+    if (isInternational(posting) && !highInterest && !options?.allowInternational) {
       return assessment({
         status: "eligible_student_role",
         publish: false,
