@@ -1,0 +1,1299 @@
+{
+  "auditedAt": "2026-11-13T04:35:17.011Z",
+  "readOnly": true,
+  "sourceVerified": true,
+  "total": 142,
+  "counts": {
+    "verified_student": 113,
+    "ineligible": 2,
+    "not_on_complete_board": 13,
+    "unverified": 14
+  },
+  "results": [
+    {
+      "id": "796f53e5-b0af-4ef0-a35b-5e62ca58534d",
+      "employer": "Moment Energy",
+      "title": "Mechanical Engineering Co-op",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4434573009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 84
+    },
+    {
+      "id": "d4e0ac94-fe75-453d-9ff4-4e7b39f51536",
+      "employer": "Cresta",
+      "title": "Product Design Intern for AI and Human Agents Platform",
+      "url": "https://job-boards.greenhouse.io/cresta/jobs/4476000008",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 84
+    },
+    {
+      "id": "df72259e-fe96-47d1-9add-cfe5cd9b251a",
+      "employer": "Tenstorrent",
+      "title": "Systems Intern - Validation, Software, Design, Architecture & Packaging (Canada)",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5264407007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "ca789ee9-2ab5-4c4a-9ba7-9feb448710ed",
+      "employer": "Later",
+      "title": "AI Automation Co-op (Spring 2027)",
+      "url": "https://job-boards.greenhouse.io/later/jobs/8604889002",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 75
+    },
+    {
+      "id": "30135917-75e2-44df-b4d2-79379cef98ec",
+      "employer": "Tenstorrent",
+      "title": "Hardware Intern - AI HW & SoC (Canada)",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5256568007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "f2c5784a-f561-444b-8ee8-c129269e807b",
+      "employer": "Hootsuite",
+      "title": "Co-op/Intern, Software Development - Winter 2027",
+      "url": "https://job-boards.greenhouse.io/hootsuite/jobs/8360176",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "764fcf9d-605e-4c01-b95d-e7d5387fa394",
+      "employer": "Tenstorrent",
+      "title": "AI Software Intern - Cloud, Infrastructure & Data Centre Deployment (Canada)",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5256579007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "90ac3f2a-f550-49fc-ab42-c053e8d52826",
+      "employer": "Tenstorrent",
+      "title": "AI Software Intern (Canada)",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5259347007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "42f9f7b7-422b-48a1-bdbc-0f0b282d592f",
+      "employer": "Moment Energy",
+      "title": "Certification Engineer Co-op",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4475608009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 75
+    },
+    {
+      "id": "3372a50b-62ce-4d7b-ace9-d742d6938ac6",
+      "employer": "Moment Energy",
+      "title": "Electrical Engineering Co-op",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4434560009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 75
+    },
+    {
+      "id": "1685cb0f-1e49-4a67-8bc0-b556899d8883",
+      "employer": "Moment Energy",
+      "title": "Test Engineering Co-op",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4455115009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 75
+    },
+    {
+      "id": "f23d6a3f-1000-4dfd-acc8-9142c1cb2413",
+      "employer": "Moment Energy",
+      "title": "Software Engineering Co-op",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4434577009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 75
+    },
+    {
+      "id": "8bb688c7-414c-414a-a65d-2591cda5c37b",
+      "employer": "Cresta",
+      "title": "Forward Deployed Engineering Intern (AI Agent)",
+      "url": "https://job-boards.greenhouse.io/cresta/jobs/5106468008",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "4fbbf2de-0ede-424b-9064-d88b4eab174a",
+      "employer": "Cresta",
+      "title": "Machine Learning Engineering Intern",
+      "url": "https://job-boards.greenhouse.io/cresta/jobs/4123863008",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "23114458-691a-45fd-8ccd-20231a9660f1",
+      "employer": "Cresta",
+      "title": "Software Engineer Intern",
+      "url": "https://job-boards.greenhouse.io/cresta/jobs/4123841008",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "399987c5-19a4-4310-bb7b-ed2f0c97bfe9",
+      "employer": "Human Computer Lab",
+      "title": "Intern - Mechatronics Engineer",
+      "url": "https://jobs.ashbyhq.com/human-computer-lab/1363a714-0195-4620-9fbd-bbf2e4fdf9ae",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "d79d143d-2660-413f-8e3a-763367735987",
+      "employer": "Astera Labs",
+      "title": "Design-for-Test Engineer Intern",
+      "url": "https://job-boards.greenhouse.io/asteraearlycareer2027/jobs/4728387005",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "500ee502-1f9d-42cf-9cb1-88c07e8e3d42",
+      "employer": "HeyGen",
+      "title": "Software Engineer Intern",
+      "url": "https://job-boards.greenhouse.io/heygen/jobs/4540716007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "0455d47f-d279-4901-9fce-e813c1d603d3",
+      "employer": "ShyftLabs",
+      "title": "AI Engineer Intern",
+      "url": "https://jobs.lever.co/shyftlabs/4f389ea7-9b98-4ed0-99c2-b25ea8cc2dcd",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "0f5db792-df48-4914-b5a4-2b9a9b59acf2",
+      "employer": "Pinterest",
+      "title": "Software Engineer Intern",
+      "url": "https://www.pinterestcareers.com/jobs/7252886/software-engineer-intern-winter-term-2026-toronto",
+      "verdict": "unverified",
+      "reason": "Page responded 403.",
+      "score": 0
+    },
+    {
+      "id": "7e8d729b-3435-46b1-a779-23488c0d8703",
+      "employer": "Tenstorrent",
+      "title": "Business Operations & Program Management Intern",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5271796007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 75
+    },
+    {
+      "id": "5e7df21a-a200-42ab-ada9-9f06d53f0b25",
+      "employer": "Amgen",
+      "title": "Software Engineer Intern",
+      "url": "https://amgen.wd1.myworkdayjobs.com/careers/job/Canada---Burnaby/Undergraduate--Co-op-Student---Software-Engineer---Large-Molecule-Discovery---Technology_R-249424",
+      "verdict": "unverified",
+      "reason": "workday amgen.wd1.myworkdayjobs.com/amgen/careers failed (403)",
+      "score": 0
+    },
+    {
+      "id": "baf853e2-b60d-4850-8d7f-242e7be08ac7",
+      "employer": "Electronic Arts",
+      "title": "Software Engineer Intern",
+      "url": "https://jobs.ea.com/en_US/careers/JobDetail/Software-Engineer-Intern/210894",
+      "verdict": "unverified",
+      "reason": "Employer ownership and student placement were not independently confirmed.",
+      "score": 0
+    },
+    {
+      "id": "ae9611f4-8b03-487f-9ce6-ac60caf7208b",
+      "employer": "Nike",
+      "title": "NIKE, Inc. Innovation Underfoot Systems Engineer Graduate Internship",
+      "url": "https://nike.wd1.myworkdayjobs.com/nke/job/Beaverton-Oregon/NIKE--Inc-Innovation-Underfoot-Systems-Engineer-Graduate-Internship_R-94431",
+      "verdict": "verified_student",
+      "reason": "Title indicates a internship. Full-time here describes the weekly schedule.",
+      "score": 72
+    },
+    {
+      "id": "56699698-e163-4de6-a6c9-1f568bd6eb56",
+      "employer": "On",
+      "title": "Intern - Running Footwear Development",
+      "url": "https://www.globalsportsjobs.com/jobs/d0e6c301-349b-427e-8008-4046775aed63",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "00b59994-245d-4199-a526-c78fee2d79e9",
+      "employer": "SK hynix memory solutions",
+      "title": "Intern, Mechanical Engineer",
+      "url": "https://job-boards.greenhouse.io/skhynixmemorysolutionsamericainc/jobs/4452580009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 72
+    },
+    {
+      "id": "4c4f9eb3-1a51-4ebb-bb89-84c8588590f3",
+      "employer": "Human Computer Lab",
+      "title": "Intern - Mechanical Engineer",
+      "url": "https://jobs.ashbyhq.com/human-computer-lab/63a06836-54f4-4475-9e03-007ce5afc04c",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 72
+    },
+    {
+      "id": "a71a0a2e-1844-477e-9a53-5c8810644c22",
+      "employer": "Meta",
+      "title": "Research Scientist Intern - Smart Glasses in Wearables AI",
+      "url": "https://www.metacareers.com/jobs/1584033410435097",
+      "verdict": "unverified",
+      "reason": "Page exceeded the verification size limit.",
+      "score": 0
+    },
+    {
+      "id": "6f3f6d85-0cea-406a-9b5c-a4351719c803",
+      "employer": "Meta",
+      "title": "Research Scientist Intern - Wearable Sensing & Human Motion Analysis",
+      "url": "https://www.metacareers.com/jobs/1137225375529389",
+      "verdict": "unverified",
+      "reason": "Page responded 404.",
+      "score": 0
+    },
+    {
+      "id": "93ec8800-eb4f-4b33-811e-a33fb1dda9d0",
+      "employer": "Nike",
+      "title": "NIKE, Inc. Product Supply Chain (PSC) Footwear & Apparel Graduate Internship",
+      "url": "https://nike.wd1.myworkdayjobs.com/nke/job/Beaverton-Oregon/NIKE--Inc-Product-Supply-Chain--PSC--Footwear---Apparel-Graduate-Internship_R-91695-1",
+      "verdict": "verified_student",
+      "reason": "Title indicates a internship. Full-time here describes the weekly schedule.",
+      "score": 72
+    },
+    {
+      "id": "a64fd8f4-763c-4503-aa7a-538eea25d0f6",
+      "employer": "Terranova",
+      "title": "AI Intern",
+      "url": "https://jobs.ashbyhq.com/Terranova/b6ce03c4-07b6-45e1-94e9-24b3ec17d942",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 72
+    },
+    {
+      "id": "e3131805-4f04-4184-aa2e-dc3557ddc918",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Mechanical Engineering Co-op, Wearable and Biomedical Devices (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4727128006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 72
+    },
+    {
+      "id": "5a6fe746-dc79-4a3e-89c1-f5f1d42f9424",
+      "employer": "Cohere",
+      "title": "Machine Learning Intern/Co-op  (Winter 2027)",
+      "url": "https://jobs.ashbyhq.com/cohere/36d1f52f-8270-4652-adf5-5303a0ff341b",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 71
+    },
+    {
+      "id": "44ac1442-c853-400d-a8d1-f3c249e771ad",
+      "employer": "Cohere",
+      "title": "Research Internship (Winter 2027)",
+      "url": "https://jobs.ashbyhq.com/cohere/73bd3e2b-6597-4124-b64b-1e5dbc32e785",
+      "verdict": "verified_student",
+      "reason": "Title indicates a internship.",
+      "score": 71
+    },
+    {
+      "id": "58ddd284-ce40-47d4-91b3-16f1e43f8aa9",
+      "employer": "1Password",
+      "title": "Developer Intern - Extension Excellence",
+      "url": "https://jobs.ashbyhq.com/1password/7f1732a6-5317-4319-82b9-67c62e88d491/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "b8045888-0e8d-40c2-a780-47629ae2e3a0",
+      "employer": "1Password",
+      "title": "Developer Intern - Front-End Platform",
+      "url": "https://jobs.ashbyhq.com/1password/71a3afd1-12b3-4f55-a3bd-fc4e7c46ee37/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "c104ebd2-f5b4-4461-9fd1-926e78703e92",
+      "employer": "1Password",
+      "title": "Developer Intern - Credential Brokering",
+      "url": "https://jobs.ashbyhq.com/1password/67bfbd8b-aba9-42b1-a8a8-833367888fba/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "8de837d4-d41e-48be-8ed7-e0308e54a4c5",
+      "employer": "1Password",
+      "title": "Developer Intern - Provisioning",
+      "url": "https://jobs.ashbyhq.com/1password/c5289ef1-e919-4672-85c5-ee3112f9ddb9/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "0ec47887-7fa3-4bf1-a49d-616b06b4f0a2",
+      "employer": "1Password",
+      "title": "Developer Intern - Vault Team",
+      "url": "https://jobs.ashbyhq.com/1password/b2726ac7-dd0d-42f3-93a5-139e18c90779/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "d8022a82-a451-4291-9bad-fc8c8d03be99",
+      "employer": "1Password",
+      "title": "Developer Intern - Machine Identity",
+      "url": "https://jobs.ashbyhq.com/1password/6a6869a7-98d2-43e3-b9b5-b68fa4daeb9f/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "55d87520-003f-481a-9127-cf91e6c950bb",
+      "employer": "Yotta Labs",
+      "title": "Research Engineer Intern - AI Systems",
+      "url": "https://jobs.ashbyhq.com/yotta/09821a51-fbe6-42a7-a566-0d2b5d40fae3/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "76dc6303-73f2-4a1a-8931-5fb0b93c9a5d",
+      "employer": "1Password",
+      "title": "Developer Intern - Developer Interfaces",
+      "url": "https://jobs.ashbyhq.com/1password/00f861d4-2b4a-4159-b6dc-8aed0cde6e39/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "bc75ed07-10b9-4c62-9216-d6591a3ee2e6",
+      "employer": "Khan Academy",
+      "title": "Software Engineer Intern",
+      "url": "https://job-boards.greenhouse.io/khanacademy/jobs/8250259",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "803f1e0f-418f-4bc4-81f8-834a1758446f",
+      "employer": "Continental",
+      "title": "2027 Internship \u2013 Tire Engineering & Product Development (Hoosier Racing Tire)",
+      "url": "https://jobs.smartrecruiters.com/Continental/744000151462349",
+      "verdict": "verified_student",
+      "reason": "Title indicates a internship.",
+      "score": 69
+    },
+    {
+      "id": "d3dab4dc-cbf3-4bec-bb02-28e87275810d",
+      "employer": "Formlabs",
+      "title": "Mechanical Engineering Intern (Winter/Spring 2027)",
+      "url": "https://careers.formlabs.com/job/8130829/apply?gh_jid=8130829",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "90a5562f-0338-4d1d-9a12-d6c87a6785c9",
+      "employer": "Formlabs",
+      "title": "Materials Intern (Summer 2027)",
+      "url": "https://careers.formlabs.com/job/8212692/apply?gh_jid=8212692",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "5ffd9bce-2d03-4083-a7d4-4dca555af14e",
+      "employer": "Droyd Robotics",
+      "title": "Mechanical Engineer Intern",
+      "url": "https://jobs.ashbyhq.com/droyd/d5a416f2-3d96-44d4-8b48-dc80dcea7f33",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "c6d60314-29a3-4a2a-8ee2-45920569c6cc",
+      "employer": "Rendezvous Robotics",
+      "title": "Mechanical Engineering Intern (Summer 2027)",
+      "url": "https://job-boards.greenhouse.io/rendezvousrobotics/jobs/4408601009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "a4013653-8437-45ca-bca9-1fe9989940c8",
+      "employer": "Formlabs",
+      "title": "Mechanical Engineering Intern (Summer 2027)",
+      "url": "https://careers.formlabs.com/job/8199928/apply?gh_jid=8199928",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "99b0571f-7c54-4c2a-9400-dbd239b4a214",
+      "employer": "Rendezvous Robotics",
+      "title": "Mechanical Engineering Intern (Spring 2027)",
+      "url": "https://job-boards.greenhouse.io/rendezvousrobotics/jobs/4329123009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "4ce4cb4e-1ccd-4f1a-a65c-c3f49097dd55",
+      "employer": "Nike",
+      "title": "NIKE, Inc. Supply Chain Planning Graduate Internship",
+      "url": "https://nike.wd1.myworkdayjobs.com/nke/job/Beaverton-Oregon/NIKE--Inc-Supply-Chain-Planning-Graduate-Internship_R-92368-1",
+      "verdict": "verified_student",
+      "reason": "Title indicates a internship. Full-time here describes the weekly schedule.",
+      "score": 69
+    },
+    {
+      "id": "7b750d58-5a7f-4db1-abe5-cdb3ac4cef9c",
+      "employer": "Formlabs",
+      "title": "Materials Intern (Winter/Spring 2027)",
+      "url": "https://careers.formlabs.com/job/8199092/apply?gh_jid=8199092",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "e398fd81-55e0-4991-9be7-6bc961cf1a36",
+      "employer": "Freeform",
+      "title": "Materials Engineering Intern (Summer 2027)",
+      "url": "https://job-boards.greenhouse.io/freeformfuturecorp/jobs/7907965003",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "bce68c6c-f76c-4e63-a34d-ffab7033e8d9",
+      "employer": "Freeform",
+      "title": "Mechanical Engineering Intern (Spring 2027)",
+      "url": "https://job-boards.greenhouse.io/freeformfuturecorp/jobs/7921114003",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "1b6cbf1a-e3df-4385-8e0d-dc6abd56b370",
+      "employer": "Freeform",
+      "title": "Mechanical Engineering Intern (Summer 2027)",
+      "url": "https://job-boards.greenhouse.io/freeformfuturecorp/jobs/7894117003",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "9205fde0-26f5-45e8-89a0-3f80c67a5e0c",
+      "employer": "Figure",
+      "title": "Integration & Test - Mechanical Engineering Intern [Winter 2027]",
+      "url": "https://job-boards.greenhouse.io/figureai/jobs/4726631006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "adeb9356-1a5d-4ff1-83dd-508f857d5f98",
+      "employer": "Figure",
+      "title": "Mechanical Engineer Intern [Winter 2027]",
+      "url": "https://job-boards.greenhouse.io/figureai/jobs/4303098006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "6243bf07-1481-4958-b8bc-2b558e515836",
+      "employer": "SharkNinja",
+      "title": "Engineering & Technology Co-op Spring Opportunities (Jan-Jun 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713854006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "d0cc26c9-8c0d-421c-b6b5-2b461642c418",
+      "employer": "SharkNinja",
+      "title": "Mechanical Engineering Intern Summer Opportunities (May-Aug 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713812006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "05d9081d-9870-416f-9632-a340928d9b51",
+      "employer": "SharkNinja",
+      "title": "Product Design Engineering Co-op Spring Opportunities (Jan-Jun 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713800006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "db10f362-638b-4c8a-95bb-9c139d441c7a",
+      "employer": "SharkNinja",
+      "title": "Engineering & Technology Intern Summer Opportunities (May-Aug 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713857006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "2bd6ab83-b964-42ca-b0d7-842167db7636",
+      "employer": "SharkNinja",
+      "title": "Mechanical Engineering Co-op Spring Opportunities (Jan-Jun 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713783006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "a626d004-f39e-4b1e-85f1-b9996d7c004d",
+      "employer": "SharkNinja",
+      "title": "Product Design Engineering Intern Summer Opportunities (May-Aug 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713810006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "ffde6f0e-c6a5-4b70-8faa-de8f51a553fe",
+      "employer": "SharkNinja",
+      "title": "Product Development, Design & Consumer Insights Intern Summer Opportunities (May-Aug 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713878006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "20ef3f5d-825e-446d-8ab1-08d451451c51",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: AI/Sharks Applied AI & Analytics Co-op (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4725275006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "91e3c69c-371c-49fc-a96d-95fe9a1bfaaf",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: CMF Industrial Design Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4722306006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "67dbf86c-4f72-48b1-9bcc-139012d736b5",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Control Systems & Algorithms Co-op (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4721611006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "32973ef0-e320-453a-8e1d-4b1660923321",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Digital & Website Technology Intern",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4728326006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "58e89e80-e03d-4273-b475-fdcb058224ff",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: HW UX/UI Design Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4721298006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "f4daa23a-5398-4028-93cc-97ddf95bbbb3",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Industrial Design Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720294006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "38d62002-7754-41d5-a215-bc9b43fe1e67",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Design & Engineering Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4726759006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "7c330dbe-8c88-4124-a30c-5cb69d76985a",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Geo Expansion Co-op (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4728258006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "bf72dc16-610b-4568-a0f2-7afa0ca9de30",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Industrial Design Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720208006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "76ba1f2c-ca8d-4093-9c00-2f5453cde846",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Mechanical Engineering Co-op, Ninja (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720340006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "a7ca8d77-b9c7-4349-829a-8960b57caab8",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Mechanical Engineering Co-op,\u00a0Shark (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4718791006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "89a7c813-abd5-449d-beae-d06aafb4b0bc",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Mechanical Systems Engineering Co-op, Ninja (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720169006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "90fd6435-1aa2-46ee-b4ae-f77c17d53d5b",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Noise & Vibrations Engineering Co-op (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720163006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "6b583fd1-ff7f-4748-8491-fbb1364709b3",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Design Engineering Co-op, Ninja (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4719432006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "c37a3f88-7b8a-4ab7-a389-bd5d79304cea",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Development Co-op, Shark (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4726452006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "05404281-d745-404a-bbae-1bb42d64ab97",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Performance Test Engineer Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4726164006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "c648963f-819e-41cd-b383-48de74eeda7f",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Design Engineering Co-op, Advanced Development (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720191006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "86f16e5a-ac7f-42e1-b79e-d9f710d28f46",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Design Engineering Co-op, Shark (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720273006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "ff8bbda3-e771-4f70-b6bf-c2c7f296a766",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Integrity Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4726437006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "c2ef24c4-f023-4ce2-a540-7f9b595558f5",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Strategy & Development Co-Op (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4723344006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "d0304fda-4b80-4553-b44d-62f61acf6706",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Quality Engineering Co-op, Shark (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4723761006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "8acb3b78-5cd6-47cc-a435-4a580fedd1aa",
+      "employer": "SharkNinja",
+      "title": "Spring 2027:Technical Project Management Co-op (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4721697006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "3ed31d13-f86d-4bd5-a78d-e0c8c0866de8",
+      "employer": "SharkNinja",
+      "title": "Summer 2027: Accounting Intern (May through August)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4727347006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "a8379564-5691-43df-b9f3-717c057aa3fe",
+      "employer": "SharkNinja",
+      "title": "Summer 2027: Control Systems & Algorithms Intern (May to August)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4721651006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "d96fe659-c1a5-4d70-88f2-55e2ea57e66a",
+      "employer": "SharkNinja",
+      "title": "Summer 2027: Data Science Intern (May to August)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4727539006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "a73fe5b6-55c8-4707-99ab-476d0c181e65",
+      "employer": "SharkNinja",
+      "title": "Summer 2027: ESG Strategy Intern (May to August)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4727543006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "7d89d994-445f-472b-8f0e-74cac5b54700",
+      "employer": "SharkNinja",
+      "title": "Business Operations & Corporate Functions Intern Opportunities",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713888006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "905d3301-2999-4765-a2fc-28c698188b6d",
+      "employer": "SharkNinja",
+      "title": "Product Development, Design & Consumer Insights Co-op Spring Opportunities (Jan-Jun 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713872006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "922d152d-15fa-4144-843e-4bafadc23349",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Consumer Insights Co-op, Shark (January to June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4724022006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "b6987e7e-0020-4d68-b167-1e1e7cbe4394",
+      "employer": "Neuralink",
+      "title": "Mechanical Engineering Intern, Brain Interfaces",
+      "url": "https://boards.greenhouse.io/neuralink/jobs/6545426003?gh_jid=6545426003",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "dde0d429-b4a4-4439-841b-d0b59bdc701c",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Ninja Test Kitchen Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4722650006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "832aa529-154e-460f-acb7-7c5c999c0f8c",
+      "employer": "SharkNinja",
+      "title": "Spring 2027: Product Test Engineering Co-op (January through June)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4726209006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "c279ec97-a83c-421d-9a18-c548263b739f",
+      "employer": "SharkNinja",
+      "title": "Summer 2027: Industrial Design Intern (May through August)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4720355006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "eda7149c-b044-4962-b078-176bc01588f4",
+      "employer": "Neuralink",
+      "title": "Mechanical Engineering Intern, Robotics and Surgery Engineering",
+      "url": "https://boards.greenhouse.io/neuralink/jobs/6514169003?gh_jid=6514169003",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "a2ea3254-c662-453e-aaff-6ca2922317be",
+      "employer": "Multiply Labs",
+      "title": "Mechanical Engineering Co-op/Intern (Spring 2027)",
+      "url": "https://jobs.lever.co/multiplylabs/4a95d36f-6ea3-4044-a6ab-5c2c1d4997a5",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "bd0d4168-4e8b-4592-8b22-a059688c80b6",
+      "employer": "Eight Sleep",
+      "title": "Prototype & Test Engineer Intern - New Product Development",
+      "url": "https://jobs.ashbyhq.com/eightsleep/393ffe76-749e-4ec1-9975-a96b7fefe31f/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "2b939d4a-cdb0-417a-81ca-f3d8cd9bf57b",
+      "employer": "Astera Labs",
+      "title": "Hardware Test/Mechanical Engineer Intern",
+      "url": "https://job-boards.greenhouse.io/asteraearlycareer2027/jobs/4724114005",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 72
+    },
+    {
+      "id": "0ab0478d-3445-4d61-81d8-d88c3205e2dd",
+      "employer": "Anduril",
+      "title": "Winter 2027 Mechanical Engineer Co-op",
+      "url": "https://boards.greenhouse.io/andurilindustries/jobs/5236601007?gh_jid=5236601007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "16a678f7-fdab-4cfe-b0a7-0c0d4d7b01d2",
+      "employer": "Fab2",
+      "title": "Mechanical Engineering Intern - Summer",
+      "url": "https://jobs.ashbyhq.com/Fab2/ada329fa-d8f5-4210-9722-82b1a33487df",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 67
+    },
+    {
+      "id": "c943d077-93e6-4760-94c0-702996fd8364",
+      "employer": "CSX",
+      "title": "Mechanical Engineering Intern",
+      "url": "https://fa-eowa-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CSXCareers/job/54844",
+      "verdict": "unverified",
+      "reason": "Employer ownership and student placement were not independently confirmed.",
+      "score": 0
+    },
+    {
+      "id": "8f63b02b-4aca-4d27-bfad-ff90cad2def3",
+      "employer": "Hermeus",
+      "title": "Mechanical Engineering Intern - Summer/Fall 2027",
+      "url": "https://jobs.lever.co/hermeus/1bc5c858-1b04-4093-80a0-2ba3491afc60",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 70
+    },
+    {
+      "id": "472b652d-cd9a-479b-b95f-f385f1480e3a",
+      "employer": "Saronic",
+      "title": "Mechanical Engineer Intern (Summer 2027)",
+      "url": "https://jobs.ashbyhq.com/saronic/f52ae6eb-7eba-4c64-97c7-57e2a234e088",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "463715ac-c4b2-46e4-a29a-814469341054",
+      "employer": "Solidigm",
+      "title": "Hardware & Product Development Engineering Intern",
+      "url": "https://jobs.smartrecruiters.com/Solidigm/744000147613839",
+      "verdict": "verified_student",
+      "reason": "Title indicates a internship.",
+      "score": 69
+    },
+    {
+      "id": "398a32fb-96a9-45d4-85d1-33abb50daad0",
+      "employer": "SharkNinja",
+      "title": "Business Operations & Corporate Functions Co-op Opportunities",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713890006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "db7e71ae-c240-4284-92e1-3c4de0636a4c",
+      "employer": "MSA Safety",
+      "title": "Software Engineer Intern - Product Development - Summer 2027",
+      "url": "https://careers.msasafety.com/jobs/9993?icims=1",
+      "verdict": "unverified",
+      "reason": "Employer ownership and student placement were not independently confirmed.",
+      "score": 0
+    },
+    {
+      "id": "427ec802-ba46-4f59-a17d-0fc4a324301c",
+      "employer": "Stryten",
+      "title": "Industrial or Mechanical Engineering Intern",
+      "url": "https://jobs.stryten.com/jobs/5809?icims=1",
+      "verdict": "unverified",
+      "reason": "Employer ownership and student placement were not independently confirmed.",
+      "score": 0
+    },
+    {
+      "id": "85ce2448-0aad-4f7d-903e-14a3dc3eb65e",
+      "employer": "MSA Safety",
+      "title": "Software Engineer Co-op - Product Development",
+      "url": "https://careers.msasafety.com/jobs/9992?icims=1",
+      "verdict": "unverified",
+      "reason": "Page responded 404.",
+      "score": 0
+    },
+    {
+      "id": "4c54d657-d155-4f74-a437-59da14aa6da5",
+      "employer": "Advanced Robotics for Manufacturing",
+      "title": "Mechanical Engineer Co-op Intern",
+      "url": "https://arminstitute.applytojob.com/apply/vd0StCQn1I/Mechanical-Engineer-Coop-Internship",
+      "verdict": "unverified",
+      "reason": "Employer ownership and student placement were not independently confirmed.",
+      "score": 0
+    },
+    {
+      "id": "bda37381-1ae5-4598-83a8-dbbb5c8d7dc9",
+      "employer": "Cisco",
+      "title": "Mechanical Engineer I (Intern) - United States",
+      "url": "https://cisco.wd5.myworkdayjobs.com/en-US/Cisco_Careers/job/San-Jose-California-US/Mechanical-Engineer-I--Intern----United-States_2026028",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern. Full-time here describes the weekly schedule.",
+      "score": 65
+    },
+    {
+      "id": "cc712e0b-261c-4c62-b9d6-44ab43d668ac",
+      "employer": "SharkNinja",
+      "title": "Summer 2027: Mechanical Engineering Intern, Shark (May to August)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4718812006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "946beb85-dbc2-4bb9-b076-95e41203de06",
+      "employer": "GlobalFoundries",
+      "title": "New Product Development Test Engineer Intern",
+      "url": "https://globalfoundries.wd1.myworkdayjobs.com/External/job/USA---Texas---Richardson/New-Product-Development-Test-Engineer-Intern--Summer-2027-_JR-2603957",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern. Full-time here describes the weekly schedule.",
+      "score": 69
+    },
+    {
+      "id": "229701e9-780b-4285-9bb9-fb3da8c92285",
+      "employer": "Rivian",
+      "title": "Software Engineer Co-op Intern - Product Development Portal",
+      "url": "https://careers.rivian.com/jobs/33745?icims=1",
+      "verdict": "unverified",
+      "reason": "Page exceeded the verification size limit.",
+      "score": 0
+    },
+    {
+      "id": "8b983264-c66f-40fd-8dc5-77e97e79d2bf",
+      "employer": "Hermeus",
+      "title": "Structures/Mechanical Engineering Intern - Spring/Summer 2027",
+      "url": "https://jobs.lever.co/hermeus/60b5d40a-1065-4bd2-8c72-6b2fb69d4761",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 70
+    },
+    {
+      "id": "c3b349c6-0492-41bb-9932-6b532248b419",
+      "employer": "SharkNinja",
+      "title": "Applied AI, Analytics & Data Science Intern Summer Opportunities (May-Aug 2027)",
+      "url": "https://job-boards.greenhouse.io/sharkninjaoperatingllc/jobs/4713808006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "44fda6ed-dcb0-4e69-aaae-396995df586b",
+      "employer": "Zebra Technologies",
+      "title": "Mechanical Engineer Intern",
+      "url": "https://zebra.wd501.myworkdayjobs.com/Zebra_careers/job/Holtsville-New-York/XMLNAME-2027-Summer-Internship--US----Mechanical-Engineer_JR103627",
+      "verdict": "unverified",
+      "reason": "workday zebra.wd501.myworkdayjobs.com/zebra/Zebra_careers failed (403)",
+      "score": 0
+    },
+    {
+      "id": "e0a968e3-bd3d-475c-ad1d-11c3d19929af",
+      "employer": "Anduril",
+      "title": "2027 Mechanical Engineer Intern",
+      "url": "https://boards.greenhouse.io/andurilindustries/jobs/5153187007?gh_jid=5153187007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "3ca33640-cd7d-431a-b16b-757e2a1f0f48",
+      "employer": "Smiths Detection",
+      "title": "Mechanical Engineering Co-Op",
+      "url": "https://jobs.smartrecruiters.com/SmithsGroup2/744000148498329",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 69
+    },
+    {
+      "id": "85f7983d-eb10-4511-84f9-d3fcc31094ec",
+      "employer": "Intuitive Surgical",
+      "title": "Mechanical Engineering Intern",
+      "url": "https://jobs.smartrecruiters.com/Intuitive/744000147091674",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 69
+    },
+    {
+      "id": "5b7d473e-dc5e-4268-9553-27a070625563",
+      "employer": "Hendrick Motorsports",
+      "title": "Racing Performance Engineer - Summer 2027 Internship",
+      "url": "https://www.internships.com/posting/racing-performance-engineer-summer-2027-internship-hendrick-motorsports-1079075172",
+      "verdict": "unverified",
+      "reason": "Employer ownership and student placement were not independently confirmed.",
+      "score": 0
+    },
+    {
+      "id": "8caf4d75-a5b6-48b2-bd6d-22d0bfaddb48",
+      "employer": "Astranis",
+      "title": "Mechanical Engineer Intern (Winter 2027)",
+      "url": "https://job-boards.greenhouse.io/astranis/jobs/4704600006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 68
+    },
+    {
+      "id": "0621c8f9-d14f-407c-a7a2-94db622abb25",
+      "employer": "Astranis",
+      "title": "Mechanical Engineer Intern (Summer 2027)",
+      "url": "https://job-boards.greenhouse.io/astranis/jobs/4704601006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 68
+    },
+    {
+      "id": "2fa07eaa-2fcb-465e-9a9a-5612d9e18d54",
+      "employer": "Astranis",
+      "title": "Mechanical Engineer Intern (Spring 2027)",
+      "url": "https://job-boards.greenhouse.io/astranis/jobs/4704602006",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 68
+    },
+    {
+      "id": "7c4b6e3b-8fd0-4599-8a60-53e5cd51cafa",
+      "employer": "Hootsuite",
+      "title": "Co-op/Intern, DevOps - Winter 2027",
+      "url": "https://job-boards.greenhouse.io/hootsuite/jobs/8359242",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 66
+    },
+    {
+      "id": "b7f76d55-2150-4720-b21c-fc8022fd6271",
+      "employer": "NVIDIA",
+      "title": "Software Engineering Intern",
+      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/NVIDIA-2027-Internships--Software-Engineering_JR2023495",
+      "verdict": "ineligible",
+      "reason": "This is a student role outside Canada, and the title is not in a high-interest area.",
+      "score": 0
+    },
+    {
+      "id": "fe220f77-a6fc-4e5c-9258-50a232da6d18",
+      "employer": "DRW",
+      "title": "AI/ML Research Intern",
+      "url": "https://job-boards.greenhouse.io/drweng/jobs/7991171",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "d37ed8b4-9e55-4297-9e85-4962537e05f5",
+      "employer": "Later",
+      "title": "Data Science Co-op",
+      "url": "https://job-boards.greenhouse.io/later/jobs/8889650002",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 64
+    },
+    {
+      "id": "da993bcc-9776-4f09-918b-80e93591d5a6",
+      "employer": "Tenstorrent",
+      "title": "IP Sales and Operations Intern",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5274169007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 64
+    },
+    {
+      "id": "b50d59e8-7f8e-4a99-8884-44e898dd318b",
+      "employer": "Tenstorrent",
+      "title": "GTM (FAE & Customer Success) and Product Intern",
+      "url": "https://job-boards.greenhouse.io/tenstorrentuniversity/jobs/5274249007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 64
+    },
+    {
+      "id": "cb9def80-958e-40da-a734-1e73a0d651c5",
+      "employer": "Moment Energy",
+      "title": "Data Scientist Co-op",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4421775009",
+      "verdict": "verified_student",
+      "reason": "Title indicates a co-op.",
+      "score": 64
+    },
+    {
+      "id": "dc8a7f55-aded-4f33-95f6-c66ddd42f43f",
+      "employer": "Moment Energy",
+      "title": "Early Careers Recruiter",
+      "url": "https://job-boards.greenhouse.io/momentenergy/jobs/4444733009",
+      "verdict": "verified_student",
+      "reason": "The description describes this opening as a student placement.",
+      "score": 64
+    },
+    {
+      "id": "67f3bef0-3a09-449f-93b7-40a3d6e0a68e",
+      "employer": "Cresta",
+      "title": "AI Quality Assurance Intern",
+      "url": "https://job-boards.greenhouse.io/cresta/jobs/5047247008",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 64
+    },
+    {
+      "id": "ee5a7a01-2337-41b0-a39b-0f6f583a2609",
+      "employer": "Veeda AI",
+      "title": "AI Scientist Intern - Veeda AI Scientist",
+      "url": "https://jobs.ashbyhq.com/veeda-labs/58cc42fb-1d6f-4e5f-860d-3b97bdccc6f4/application?embed=true",
+      "verdict": "unverified",
+      "reason": "ashby veeda-labs failed (404)",
+      "score": 0
+    },
+    {
+      "id": "dbb05a06-c8c8-4585-a07d-0ac1be41aa3f",
+      "employer": "Ritual",
+      "title": "Software Engineer Intern",
+      "url": "https://job-boards.greenhouse.io/ritual/jobs/4068271007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 63
+    },
+    {
+      "id": "dc48f416-a167-4973-a03f-71deb4eca606",
+      "employer": "Ritual",
+      "title": "Research Intern",
+      "url": "https://job-boards.greenhouse.io/ritual/jobs/4358496007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 63
+    },
+    {
+      "id": "bd15f9cd-c15f-4011-b586-0243c6f6d3d4",
+      "employer": "1Password",
+      "title": "Product Management Intern - End User Experience",
+      "url": "https://jobs.ashbyhq.com/1password/bef2e88e-9590-467d-8ba6-821b30529003/application?embed=true",
+      "verdict": "not_on_complete_board",
+      "reason": "Posting absent from a complete current employer snapshot.",
+      "score": 0
+    },
+    {
+      "id": "544f5dee-5d47-4444-ab3d-c29ea8fd05b7",
+      "employer": "AlayaCare",
+      "title": "Intern, Security Analyst - Winter Semester 2027",
+      "url": "https://alayacare.com/open-positions?gh_jid=8811336002",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 55
+    },
+    {
+      "id": "4e3f9634-d778-49df-8d89-047305309b75",
+      "employer": "NVIDIA",
+      "title": "Deep Learning Scientist Intern - LLM, Multimodal and Agentic AI",
+      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Deep-Learning-Scientist-Intern--LLM--Multimodal-and-Agentic-AI---Summer-2027_JR2027548",
+      "verdict": "ineligible",
+      "reason": "This is a student role outside Canada, and the title is not in a high-interest area.",
+      "score": 0
+    },
+    {
+      "id": "6cb9bdac-e437-4555-9ec0-92fd19ee7787",
+      "employer": "Muon Space",
+      "title": "Legal Intern (Summer 2027)",
+      "url": "https://job-boards.greenhouse.io/muonspace/jobs/5253395007",
+      "verdict": "verified_student",
+      "reason": "Title indicates a intern.",
+      "score": 52
+    }
+  ],
+  "source": "Public /jobs page export; no database credentials or private application state were read.",
+  "limitations": [
+    "Point-in-time source verification, not confirmation of work authorization or personal qualification.",
+    "The public export omits custom-search scope metadata. The two geography exclusions need private metadata review before any cleanup.",
+    "Absence from a complete board is a review finding, not authorization to delete or close production records.",
+    "Access failures and insufficient structured data remain unverified, not proven ineligible."
+  ]
+}
