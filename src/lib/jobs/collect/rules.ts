@@ -1,7 +1,8 @@
+import { excludedDiscoveryRole } from "@/lib/jobs/role-policy";
 import { normalizeCountry } from "@/lib/jobs/collect/text";
 import type { ScoreBreakdown } from "@/lib/jobs/types";
 
-export const SCORING_VERSION = "student-rules-v2";
+export const SCORING_VERSION = "student-rules-v3";
 
 export type JobSource =
   | "greenhouse"
@@ -89,7 +90,7 @@ const CATEGORIES: CategoryRule[] = [
     pattern: /\b(software|developer|devops|front[- ]?end|back[- ]?end)\b/,
   },
   {
-    id: "AI and research",
+    id: "Research",
     level: "medium",
     boost: false,
     pattern: /\b(machine learning|artificial intelligence|research intern|research internship|undergraduate research)\b/,
@@ -208,6 +209,13 @@ export function assessPosting(
   }
 
   if (positive) {
+    if (excludedDiscoveryRole(posting)) {
+      return assessment({
+        status: "eligible_student_role", publish: false,
+        reason: "AI, machine-learning and software roles are excluded from discovery.",
+        evidence, categories,
+      });
+    }
     if (pastTerm(`${title} ${description}`, now)) {
       return assessment({
         status: "eligible_student_role",
@@ -480,7 +488,7 @@ function careerSentenceFor(focus: string, technical: boolean): string {
   if (focus === "Materials engineering") return "It offers materials engineering experience.";
   if (focus === "Motorsports") return "It is directly connected to motorsports engineering.";
   if (focus === "Finance") return "It offers experience in finance.";
-  if (focus === "AI and research") return "It offers research experience.";
+  if (focus === "Research") return "It offers research experience.";
   if (focus === "Product design" || focus === "Product development") return "It offers product development experience.";
   if (focus === "Running and sports technology") return "It is connected to running or sports technology.";
   if (technical) return "It offers relevant technical experience.";

@@ -156,7 +156,7 @@ test("co-op, research, and student technician placements are accepted", () => {
     now,
   );
   assert.equal(research.publish, true);
-  assert.equal(research.tags.includes("AI and research"), true);
+  assert.equal(research.tags.includes("Research"), true);
   const technician = assessPosting(
     posting({
       title: "Automotive Technician Co-op",
@@ -194,9 +194,9 @@ test("categories come from the role, not from stray words", () => {
     }),
     now,
   );
-  assert.equal(hootsuite.publish, true);
+  assert.equal(hootsuite.publish, false);
   assert.deepEqual(hootsuite.tags, ["Software"]);
-  assert.equal(hootsuite.breakdown.location, 100);
+  assert.equal(hootsuite.status, "eligible_student_role");
   assert.equal(/motorsport|sports/i.test(hootsuite.explanation), false);
 
   const cohere = assessPosting(
@@ -211,8 +211,8 @@ test("categories come from the role, not from stray words", () => {
     }),
     now,
   );
-  assert.equal(cohere.publish, true);
-  assert.equal(cohere.tags.includes("AI and research"), true);
+  assert.equal(cohere.publish, false);
+  assert.equal(cohere.tags.includes("Research"), true);
   assert.equal(cohere.tags.includes("Motorsports"), false);
   assert.equal(cohere.tags.includes("Running and sports technology"), false);
 
@@ -242,7 +242,7 @@ test("categories come from the role, not from stray words", () => {
 test("remote outside Canada is not treated as remote Canada", () => {
   const result = assessPosting(
     posting({
-      title: "Software Engineering Intern",
+      title: "Finance Intern",
       location: "Remote - eligible United Kingdom locations",
       country: "United Kingdom",
       workArrangement: "remote",

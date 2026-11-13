@@ -1,3 +1,4 @@
+import { excludedDiscoveryRole } from "@/lib/jobs/role-policy";
 import type { JobListing, WorkArrangement } from "@/lib/jobs/types";
 
 export function sortShortlist(jobs: JobListing[]): JobListing[] {
@@ -71,4 +72,10 @@ function compareJobs(a: JobListing, b: JobListing, sort: JobSort): number {
 
 export function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+/** Hide excluded stored listings immediately while preserving saved/applied history. */
+export function applyDiscoveryPolicy(jobs: JobListing[]): JobListing[] {
+  return jobs.map((job) => excludedDiscoveryRole(job) ? { ...job, inDiscovery: false } : job)
+    .filter((job) => job.inDiscovery !== false || job.saved || job.applied);
 }

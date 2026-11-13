@@ -11,7 +11,7 @@ function posting(overrides: Partial<CollectedPosting>): CollectedPosting {
   return {
     provider: "web",
     sourceId: "1",
-    title: "Software Engineering Intern",
+    title: "Finance Intern",
     companyName: "Example",
     location: "New York, NY",
     country: "United States",

@@ -103,9 +103,9 @@ The button reports that a refresh was requested. It does not wait for new jobs i
 
 When the database is connected, `/jobs` shows stored listings only. Sample cards stay on the page only when Supabase is not configured.
 
-Materials engineering is a high-interest field, alongside mechanical engineering, product development, motorsports, and running technology.
+Materials engineering is a high-interest field, alongside mechanical engineering, product development, motorsports, and running technology. AI, machine-learning and software-development roles are excluded from discovery, including custom research results. Physical engineering roles are retained when they merely mention software tools or work at technology companies. Existing excluded listings are hidden from Discover without deleting records; saved and applied history remains available.
 
-Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `student-rules-v2`. The weights are unchanged. Summer analyst, industrial placement, and undergraduate research titles count as student evidence.
+Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `student-rules-v3`. The weights are unchanged. Summer analyst, industrial placement, and undergraduate research titles count as student evidence.
 
 ### Research
 

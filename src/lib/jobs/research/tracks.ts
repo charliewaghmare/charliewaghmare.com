@@ -48,13 +48,6 @@ const SEEDS: TrackSeed[] = [
     places: ["Ontario", "Vancouver", "Canada", "Toronto"],
   },
   {
-    id: "software",
-    label: "AI, software and automation",
-    interest: "medium",
-    roles: ["software engineering", "machine learning", "robotics software", "automation"],
-    places: ["Vancouver", "Toronto", "Canada", "remote Canada"],
-  },
-  {
     id: "finance",
     label: "Finance and financial technology",
     interest: "medium",

@@ -20,7 +20,6 @@ export const defaultSearchPreferences: SearchPreferences = {
     { id: "wearables", label: "Wearables and sports equipment development", level: "high" },
     { id: "materials", label: "Materials engineering", level: "high" },
     { id: "manufacturing", label: "Manufacturing", level: "medium" },
-    { id: "ai", label: "AI and software engineering", level: "medium" },
     { id: "automation", label: "Automation and robotics", level: "medium" },
     { id: "general", label: "General engineering", level: "medium" },
     {
@@ -79,4 +78,10 @@ export function isSearchPreferences(value: unknown): value is SearchPreferences 
     return false;
   }
   return true;
+}
+
+/** Apply current exclusions to preferences saved before the role-policy change. */
+export function applySearchPolicy(preferences: SearchPreferences): SearchPreferences {
+  return { ...preferences, interests: preferences.interests.filter((interest) =>
+    !["ai", "ml", "software"].includes(interest.id.toLowerCase())) };
 }

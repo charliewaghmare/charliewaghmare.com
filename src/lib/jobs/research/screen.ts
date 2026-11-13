@@ -1,3 +1,4 @@
+import { excludedDiscoveryRole } from "@/lib/jobs/role-policy";
 import { pastTerm } from "@/lib/jobs/collect/rules";
 import { canonicalUrl } from "@/lib/jobs/collect/text";
 
@@ -20,6 +21,9 @@ export function screenCandidate(
   if (!url) return { ok: false, reason: "The posting URL is not a usable https link." };
   if (seen.has(url)) return { ok: false, reason: "Duplicate posting URL in this run." };
   seen.add(url);
+  if (excludedDiscoveryRole({ title: job.title, description: job.evidenceQuote })) {
+    return { ok: false, reason: "AI, machine-learning and software roles are excluded from discovery." };
+  }
   const title = job.title.toLowerCase();
   const studentTitle = STUDENT.test(title);
   if (PROFESSIONAL.test(title) && !studentTitle) {

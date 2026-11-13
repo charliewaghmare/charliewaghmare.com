@@ -8,6 +8,12 @@ import { watchlist } from "./collect/watchlist";
 import { upsertJob, persistCollection } from "./collect/persist";
 import { discoverCommunity } from "./collect/discover";
 import { selectCommunityPostings } from "./collect/community";
+import { excludedDiscoveryRole } from "./role-policy";
+import { applyDiscoveryPolicy } from "./filter";
+import { applySearchPolicy, defaultSearchPreferences } from "./profile";
+import { sampleJobs } from "./demo";
+import { researchTracks } from "./research/tracks";
+import { screenCandidate } from "./research/screen";
 import { atsPostingIdentity } from "./research/ats";
 import { assertPublicHttps } from "./research/safety";
 import { fetchPublicPage } from "./research/verify";
@@ -69,7 +75,7 @@ test("terms expire at season end, country codes normalize, and enrichment recogn
   assert.equal(pastTerm("Summer 2027", new Date("2027-06-01")), false);
   assert.equal(pastTerm("Summer 2027", new Date("2027-09-01")), true);
   assert.equal(normalizeCountry("ca"), "Canada");
-  assert.equal(assessPosting(posting({ country: "ca", location: "Waterloo", title: "Software Intern" }), now).publish, true);
+  assert.equal(assessPosting(posting({ country: "ca", location: "Waterloo", title: "Finance Intern" }), now).publish, true);
   for (const title of ["Summer Analyst", "Industrial Placement", "Undergraduate Research Assistant"]) assert.equal(titleLooksRelevant(title), true);
   assert.deepEqual(seasonsFor(new Date("2027-11-01")), ["Summer 2028", "Fall 2028", "Winter 2029"]);
 });
@@ -97,7 +103,7 @@ test("shared writes preserve employer records, distinct requisitions, source sup
 });
 
 test("incomplete snapshots never close jobs; complete snapshots do; custom international scope survives reclassification", async () => {
-  const row = { id: "job", company_id: "company", source: "greenhouse", source_id: "old", title: "Software Intern", description: posting().description,
+  const row = { id: "job", company_id: "company", source: "greenhouse", source_id: "old", title: "Finance Intern", description: posting().description,
     country: "United States", location: "Boston, MA", employment_type: "Internship", active: true, lifecycle_status: "active", miss_count: 1,
     is_sample: false, raw_metadata: { allowInternational: true, provenance: "web-research" } };
   const store = database({ jobs: [{ ...row }] });
@@ -169,7 +175,7 @@ test("exhausted research queries become eligible again after the cooldown", () =
 });
 
 test("collection preserves explicit custom geography when refreshing employer evidence", async () => {
-  const live = posting({ title: "Software Intern", country: "United States", location: "Boston, MA" });
+  const live = posting({ title: "Finance Intern", country: "United States", location: "Boston, MA" });
   const store = database({ jobs: [{ id: "job", company_id: "company", source: live.provider, source_id: live.sourceId,
     source_url: live.sourceUrl, title: live.title, description: live.description, active: true,
     lifecycle_status: "active", is_sample: false, raw_metadata: { allowInternational: true } }] });
@@ -199,4 +205,59 @@ test("ATS identity matches apply aliases but separates different postings and ge
   assert.equal(atsPostingIdentity("https://job-boards.greenhouse.io/northline"), null);
   assert.equal(atsPostingIdentity("https://jobs.ashbyhq.com/northline/job-1/application"), atsPostingIdentity("https://jobs.ashbyhq.com/northline/job-1"));
   assert.notEqual(atsPostingIdentity("https://jobs.ashbyhq.com/northline/job-1"), atsPostingIdentity("https://jobs.ashbyhq.com/northline/job-2"));
+});
+
+test("discovery excludes AI, ML and software roles even under custom international scope", () => {
+  for (const title of ["Software Engineering Intern", "AI Research Intern", "Machine Learning Co-op", "ML Engineer Intern",
+    "Artificial Intelligence Intern", "Full Stack Developer Intern", "Firmware Engineering Intern", "Computer Vision Research Intern"]) {
+    const job = posting({ title });
+    assert.equal(excludedDiscoveryRole(job), true, title);
+    const result = assessPosting(job, now, { allowInternational: true });
+    assert.equal(result.publish, false, title);
+    assert.equal(result.status, "eligible_student_role", title);
+    assert.match(result.reason, /excluded from discovery/);
+    assert.equal(screenCandidate({ title, sourceUrl: job.sourceUrl!, employmentType: "Internship", evidenceQuote: job.description }, new Set(), now).ok, false);
+  }
+  assert.equal(excludedDiscoveryRole({ title: "Research Internship", description: "Research internship on machine learning for enrolled students." }), true);
+});
+
+test("physical engineering and non-AI research survive incidental software requirements", () => {
+  for (const title of ["Mechanical Engineering Intern", "Manufacturing Engineering Co-op", "Materials Engineering Intern", "Mechanical Design Intern — AI Hardware"]) {
+    const job = posting({ title, companyName: "AI Software Company", description: "Currently enrolled students use CAD software and Python tools to design and test physical products. The company also develops machine learning software." });
+    assert.equal(excludedDiscoveryRole(job), false, title);
+    assert.equal(assessPosting(job, now).publish, true, title);
+  }
+  assert.equal(assessPosting(posting({ title: "Undergraduate Research Internship", description: "Currently enrolled engineering students conduct laboratory experiments on composites." }), now).publish, true);
+});
+
+test("existing excluded jobs leave discovery while saved and applied histories remain", () => {
+  const job = { ...sampleJobs[0], title: "Software Engineering Intern", inDiscovery: true, saved: false, applied: false };
+  assert.equal(applyDiscoveryPolicy([job]).length, 0);
+  for (const status of [{ saved: true }, { applied: true }]) {
+    const result = applyDiscoveryPolicy([{ ...job, ...status }]);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].inDiscovery, false);
+  }
+  assert.equal(applyDiscoveryPolicy([{ ...job, title: "Mechanical Engineering Intern" }]).length, 1);
+});
+
+test("search interests and query tracks no longer target AI or software", () => {
+  const preferences = applySearchPolicy({ ...defaultSearchPreferences, interests: [...defaultSearchPreferences.interests,
+    { id: "ai", label: "AI and software engineering", level: "medium" }, { id: "software", label: "Software", level: "medium" }] });
+  assert.equal(preferences.interests.some((interest) => ["ai", "ml", "software"].includes(interest.id)), false);
+  assert.equal(researchTracks(now).some((track) => track.id === "software"), false);
+  assert.ok(preferences.interests.some((interest) => interest.id === "mechanical"));
+});
+
+test("collection withholds excluded roles without changing saved/applied records", async () => {
+  const live = posting({ title: "Software Engineering Intern", allowInternational: true });
+  const history = { job_id: "job", saved: true, applied: true, notes: "Keep my application history" };
+  const store = database({ jobs: [{ id: "job", company_id: "company", source: live.provider, source_id: live.sourceId,
+    source_url: live.sourceUrl, title: live.title, description: live.description, employment_type: "Internship",
+    active: true, lifecycle_status: "active", is_sample: false, raw_metadata: { allowInternational: true } }],
+    user_job_status: [{ ...history }] });
+  await persistCollection(store.db, [{ company, ok: true, error: null, postings: [live], complete: true }]);
+  assert.equal(store.tables.jobs[0].active, false);
+  assert.deepEqual(store.tables.user_job_status, [history]);
+  assert.equal(store.writes.some((write) => write.table === "user_job_status"), false);
 });

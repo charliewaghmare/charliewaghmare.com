@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildCoverageReport } from "@/lib/jobs/collect/coverage";
 import { watchlist, type WatchCompany, type AtsProvider } from "@/lib/jobs/collect/watchlist";
 import { sampleCompanies, sampleJobs } from "@/lib/jobs/demo";
-import { defaultSearchPreferences, isSearchPreferences } from "@/lib/jobs/profile";
+import { applyDiscoveryPolicy } from "@/lib/jobs/filter";
+import { applySearchPolicy, defaultSearchPreferences, isSearchPreferences } from "@/lib/jobs/profile";
 import { anonClient, databaseConfigured, pinConfigured, serviceClient } from "@/lib/jobs/supabase";
 import type {
   ApplicationStage,
@@ -74,7 +75,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   const base: JobsPageModel = {
     source: "sample",
     note: "Sample listings for layout preview. They are fictional and not open.",
-    jobs: sampleJobs,
+    jobs: applyDiscoveryPolicy(sampleJobs),
     companies: sampleCompanies,
     preferences: unlocked ? defaultSearchPreferences : null,
     ignored: [],
@@ -113,7 +114,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   const companies = await loadCompanies(reader);
   const collection = await loadRunStatus("collection");
   const research = await loadRunStatus("research");
-  if (rows.length === 0) {
+  if (rows.length === 0 && !unlocked) {
     return {
       ...emptyDatabase(
         "No current student roles are in the feed. Professional postings stay out of discovery.",
@@ -221,10 +222,10 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   return {
     source: "database",
     note: null,
-    jobs: [
+    jobs: applyDiscoveryPolicy([
       ...rows.map((row) => ({ ...toJob(row, statusById.get(row.id) ?? null, unlocked), inDiscovery: true })),
       ...historyJobs,
-    ],
+    ]),
     companies,
     preferences,
     ignored,
@@ -480,7 +481,7 @@ function preferencesFromRow(row: unknown): SearchPreferences | null {
     strategy: record.strategy ?? defaultSearchPreferences.strategy,
     feedbackAdaptation: record.feedback_adaptation ?? defaultSearchPreferences.feedbackAdaptation,
   };
-  return isSearchPreferences(candidate) ? candidate : defaultSearchPreferences;
+  return isSearchPreferences(candidate) ? applySearchPolicy(candidate) : defaultSearchPreferences;
 }
 
 function mapIgnored(rows: unknown[]): IgnoredJob[] {

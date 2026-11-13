@@ -47,10 +47,16 @@ A live collection dry run checked 45 source groups without source failures, fetc
 
 ## Validation and release
 
-Run `npm run test:jobs`, `npx next typegen`, `npx tsc --noEmit`, `npm run lint`, and `npm run build`. All 52 jobs tests pass. TypeScript, lint and whitespace checks pass. Tests include persistence/suppression/lifecycle regressions, custom geography, failed-source handling, query cooldown, deterministic discovery, verification limits and the read-only auditor.
+Run `npm run test:jobs`, `npx next typegen`, `npx tsc --noEmit`, `npm run lint`, and `npm run build`. All 57 jobs tests pass. TypeScript, lint and whitespace checks pass. Tests include persistence/suppression/lifecycle regressions, custom geography, failed-source handling, query cooldown, deterministic discovery, verification limits and the read-only auditor.
 
 The normal Turbopack build was attempted but its CSS worker socket was blocked by the local execution environment. `npm run build -- --webpack` completed a production build, including TypeScript and all route generation. Recheck the normal build in the deployment/CI environment; the repository build configuration has not been changed.
 
 No database migration or new secret is required. Production deployment and production inventory cleanup remain separate owner approvals. Review the inventory findings, recheck sources and private scope metadata, and approve any status changes explicitly before applying them. Retain jobs and tracking history; do not delete records to clean the feed.
 
 Known limitations: capped/keyword ATS sources need explicit posting rechecks for closure; some custom career pages require browser rendering; legacy feed records are not automatically certified by this change; legacy cross-source aliases can remain duplicates; saved preferences still do not configure backend scoring weights; provider cost estimates remain approximate; simultaneous workflow writes are not protected by a global database lease. A later scoped change should address recurring web-posting verification and canonical requisition aliases before scaling ingestion substantially.
+
+## Current role exclusions
+
+Discovery excludes AI, machine-learning and software-development/firmware roles through one shared deterministic role policy. The policy applies to new collection, custom research candidate screening and publication, and existing stored Discover results. It does not exclude entire employers or physical engineering placements that merely use software tools. General non-AI student research remains eligible. The AI/software interest and software query track have been removed; AI-powered custom search itself remains available on demand, and scheduled AI research remains disabled.
+
+Stored jobs are not deleted. Excluded saved/applied jobs remain accessible in application history, including when the active discovery inventory is empty. Collection uses classification version `student-rules-v3`. No migration or manual production database cleanup is needed for the display change.
