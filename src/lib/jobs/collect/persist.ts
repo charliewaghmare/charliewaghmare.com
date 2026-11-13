@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { decideWrite, nextLifecycle } from "@/lib/jobs/collect/dedupe";
+import { decideWrite, keepEmployerRecord, nextLifecycle } from "@/lib/jobs/collect/dedupe";
 import { sameRequisition } from "@/lib/jobs/research/ats";
 import { assessPosting, SCORING_VERSION, type Assessment, type CollectedPosting } from "@/lib/jobs/collect/rules";
 import { canonicalUrl } from "@/lib/jobs/collect/text";
@@ -46,6 +46,10 @@ export type RunSummary = {
   retained: number;
   storedExcluded: number;
   storedQuarantined: number;
+  feedRaw: number;
+  feedClosed: number;
+  feedRejectedLink: number;
+  feedDuplicateBoard: number;
   bySource: SourceTally[];
   examples: string[];
   errors: string[];
@@ -78,6 +82,10 @@ export async function persistCollection(
     retained: 0,
     storedExcluded: 0,
     storedQuarantined: 0,
+    feedRaw: 0,
+    feedClosed: 0,
+    feedRejectedLink: 0,
+    feedDuplicateBoard: 0,
     bySource: [],
     examples: [],
     errors: results.flatMap((result) => (result.error ? [result.error] : [])),
@@ -283,6 +291,9 @@ async function upsertJob(
     updated_at: now,
     raw_metadata: metadataFor(posting, scored),
   };
+  if (decision.action === "update" && existing?.id && keepEmployerRecord(existing.source as string | null, posting.provider)) {
+    return "duplicate";
+  }
   if (decision.action === "update" && existing?.id) {
     const { error } = await db.from("jobs").update(row).eq("id", existing.id);
     if (error) throw new Error(error.message);
@@ -303,7 +314,7 @@ async function markMissing(
     .from("jobs")
     .select("id, source_id, miss_count, active")
     .eq("company_id", companyId)
-    .eq("source", company.provider);
+    .eq("source", company.listingSource ?? company.provider);
   let stale = 0;
   let closed = 0;
   for (const row of data ?? []) {

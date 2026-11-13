@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { loadCommunityFeed, type FeedStats } from "@/lib/jobs/collect/community";
 import { fetchBoard, SourceFailure } from "@/lib/jobs/collect/fetch-source";
 import { persistCollection, type RunSummary, type SourceResult } from "@/lib/jobs/collect/persist";
 import { assessPosting } from "@/lib/jobs/collect/rules";
@@ -25,12 +26,11 @@ export async function collectJobs(options: {
   boards = boards.filter((company) =>
     options.only ? company.boardId === options.only || company.name === options.only : true,
   );
-  const results: SourceResult[] = [];
-  for (const company of boards) {
+  const results = await mapPool(boards, 4, async (company) => {
     try {
       const postings = await fetchBoard(company, options.fetchImpl);
-      results.push({ company, ok: true, error: null, postings });
       console.log(`${company.name}: fetched ${postings.length}`);
+      return { company, ok: true, error: null, postings };
     } catch (error) {
       const message =
         error instanceof SourceFailure
@@ -38,7 +38,44 @@ export async function collectJobs(options: {
           : error instanceof Error
             ? error.message
             : "Source failed";
-      results.push({ company, ok: false, error: message, postings: [] });
+      console.error(message);
+      return { company, ok: false, error: message, postings: [] };
+    }
+  });
+  let feedStats: FeedStats = emptyFeed();
+  let feedCompanies: WatchCompany[] = [];
+  if (!options.only) {
+    try {
+      const skipBoards = new Set(
+        boards.flatMap((company) => (company.provider && company.boardId ? [`${company.provider}:${company.boardId}`] : [])),
+      );
+      const feed = await loadCommunityFeed(skipBoards, options.fetchImpl, options.now);
+      feedStats = feed.stats;
+      feedCompanies = feed.results.map((item) => item.company);
+      for (const item of feed.results) {
+        results.push({ company: item.company, ok: true, error: null, postings: item.postings });
+      }
+      console.log(`Community feed: kept ${feed.stats.kept} of ${feed.stats.raw}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Community feed failed";
+      results.push({
+        company: {
+          name: "internship-radar",
+          website: "https://github.com/IS-tib/internship-radar",
+          careersUrl: null,
+          provider: null,
+          boardId: null,
+          region: "global",
+          categories: [],
+          geographicRelevance: "",
+          enabled: true,
+          listingSource: "web",
+          why: "MIT-licensed community feed.",
+        },
+        ok: false,
+        error: message,
+        postings: [],
+      });
       console.error(message);
     }
   }
@@ -89,6 +126,7 @@ export async function collectJobs(options: {
       }
       summary.bySource.push(tally);
     }
+    applyFeedStats(summary, feedStats);
     console.log(`Dry run. Nothing was saved. ${JSON.stringify(summary)}`);
     return summary;
   }
@@ -97,7 +135,8 @@ export async function collectJobs(options: {
   const runId = await ensureRun(db, options.runId ?? null);
   await db.from("search_runs").update({ status: "running" }).eq("id", runId);
   try {
-    const summary = await persistCollection(db, results, options.only ? boards : watchlist);
+    const summary = await persistCollection(db, results, options.only ? boards : [...watchlist, ...feedCompanies]);
+    applyFeedStats(summary, feedStats);
     const status = summary.sourcesFailed > 0 && summary.sourcesSucceeded > 0
       ? "partial"
       : summary.sourcesSucceeded === 0
@@ -194,6 +233,40 @@ export function collectionBoards(): WatchCompany[] {
   return activeBoards();
 }
 
+function emptyFeed(): FeedStats {
+  return {
+    raw: 0,
+    closed: 0,
+    rejectedLink: 0,
+    duplicateBoard: 0,
+    ineligible: 0,
+    uncertain: 0,
+    geography: 0,
+    kept: 0,
+  };
+}
+
+function applyFeedStats(summary: RunSummary, stats: FeedStats): void {
+  summary.feedRaw = stats.raw;
+  summary.feedClosed = stats.closed;
+  summary.feedRejectedLink = stats.rejectedLink;
+  summary.feedDuplicateBoard = stats.duplicateBoard;
+}
+
+async function mapPool<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await task(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 function emptySummary(results: SourceResult[]): RunSummary {
   return {
     sourcesChecked: results.length,
@@ -217,6 +290,10 @@ function emptySummary(results: SourceResult[]): RunSummary {
     retained: 0,
     storedExcluded: 0,
     storedQuarantined: 0,
+    feedRaw: 0,
+    feedClosed: 0,
+    feedRejectedLink: 0,
+    feedDuplicateBoard: 0,
     bySource: [],
     examples: [],
     errors: results.flatMap((result) => (result.error ? [result.error] : [])),

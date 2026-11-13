@@ -1,3 +1,17 @@
+const EMPLOYER_SOURCES = new Set([
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "workable",
+  "workday",
+]);
+
+/** A community row must not replace a posting already saved from the employer's own board. */
+export function keepEmployerRecord(existingSource: string | null | undefined, incomingSource: string): boolean {
+  return incomingSource === "web" && Boolean(existingSource && EMPLOYER_SOURCES.has(existingSource));
+}
+
 export function decideWrite(input: {
   existingByIdentity: boolean;
   existingByUrl: boolean;

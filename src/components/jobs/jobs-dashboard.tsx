@@ -692,6 +692,12 @@ function CoveragePanel({ coverage }: { coverage: NonNullable<JobsPageModel["cove
     ["Eligible below 50", coverage.belowThreshold],
     ["Eligible at 50 or above", coverage.aboveThreshold],
     ["New jobs saved", coverage.inserted],
+    ["Existing jobs updated", coverage.updated],
+    ["Sources checked", coverage.sourcesChecked],
+    ["Sources failed", coverage.sourcesFailed],
+    ["Community feed rows", coverage.feedRaw],
+    ["Community rows closed", coverage.feedClosed],
+    ["Community links skipped", coverage.feedRejectedLink],
     ["Duplicates", coverage.duplicates],
     ["Suppressed", coverage.suppressed],
     ["AI jobs saved", coverage.aiImported],
@@ -721,7 +727,10 @@ function CoveragePanel({ coverage }: { coverage: NonNullable<JobsPageModel["cove
       </p>
       {coverage.bySource.length > 0 ? (
         <ul className="mt-3 space-y-1 text-[0.8125rem] leading-6">
-          {coverage.bySource.slice(0, 12).map((source) => (
+          {[...coverage.bySource]
+            .sort((left, right) => right.eligible - left.eligible || right.fetched - left.fetched)
+            .slice(0, 20)
+            .map((source) => (
             <li key={`${source.provider}-${source.name}`}>
               {source.name} ({source.provider}): {source.fetched} fetched, {source.eligible} eligible, {source.aboveThreshold} at 50 or above
             </li>

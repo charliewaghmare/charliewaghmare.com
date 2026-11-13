@@ -164,6 +164,12 @@ export type CoverageReport = {
   duplicates: number;
   suppressed: number;
   inserted: number;
+  updated: number;
+  sourcesChecked: number;
+  sourcesFailed: number;
+  feedRaw: number;
+  feedClosed: number;
+  feedRejectedLink: number;
   aiImported: number;
   aiCandidates: number;
   aiVerified: number;
