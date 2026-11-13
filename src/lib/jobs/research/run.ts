@@ -63,7 +63,7 @@ export async function runResearch(options: {
 }): Promise<ResearchSummary | null> {
   const now = options.now ?? new Date();
   if (!shouldRunResearch(now, options.trigger)) {
-    console.log("Skipping research until Tuesday or Friday at 6:00 America/Vancouver.");
+    console.log("Skipping scheduled research. Start a search from the jobs page.");
     return null;
   }
   const started = Date.now();

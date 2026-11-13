@@ -1,11 +1,6 @@
 name: Research jobs
 
 on:
-  schedule:
-    # 13:00 UTC is 6:00 AM Pacific Daylight Time. 14:00 UTC is 6:00 AM Pacific Standard Time.
-    # The script runs only on Tuesday and Friday at 6:00 America/Vancouver, so only one of these does the research.
-    - cron: "0 13 * * 2,5"
-    - cron: "0 14 * * 2,5"
   workflow_dispatch:
     inputs:
       query:
@@ -13,7 +8,7 @@ on:
         required: false
         type: string
       depth:
-        description: quick, standard, or deep. Leave empty for the scheduled budget.
+        description: quick, standard, or deep. Sent by the jobs page.
         required: false
         type: string
       run_id:

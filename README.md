@@ -109,7 +109,7 @@ Discovery keeps internships, co-ops, and other roles with positive evidence they
 
 ### Research
 
-Twice a week, GitHub Actions runs `.github/workflows/research-jobs.yml` at 6:00 AM America/Vancouver on Tuesday and Friday. It uses the OpenAI Responses API with the `web_search` tool (`gpt-6-astra` unless `OPENAI_RESEARCH_MODEL` is set). A run is limited to 4 searches, 8 page checks, and 3 new companies.
+Research does not run on a timer. It starts only when you search from the unlocked jobs page. That dispatches `.github/workflows/research-jobs.yml`. The workflow uses the OpenAI Responses API with the `web_search` tool (`gpt-6-astra` unless `OPENAI_RESEARCH_MODEL` is set).
 
 Add these GitHub Actions secrets in addition to the collector secrets:
 
@@ -124,9 +124,9 @@ Web search is $10 per 1,000 calls on OpenAI's pricing page, plus model tokens. `
 
 The daily collector also reads verified SmartRecruiters boards, Nike's public Workday feed, and additional Greenhouse and Ashby boards that returned student postings. Workable's public API is implemented, but no target employer currently returns jobs from it, so none are monitored. iCIMS, campus login systems, and Handshake are not collected.
 
-The same collection run reads the MIT-licensed `listings.json` from [internship-radar](https://github.com/IS-tib/internship-radar). It keeps direct employer links, skips shortened links, and does not replace a posting already saved from Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or Workday. Simplify's listings file has no license, so it is not imported. This pass does not call a language model. The Tuesday and Friday research workflow is unchanged.
+The same collection run reads the MIT-licensed `listings.json` from [internship-radar](https://github.com/IS-tib/internship-radar). It keeps direct employer links, skips shortened links, and does not replace a posting already saved from Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or Workday. Simplify's listings file has no license, so it is not imported. This pass does not call a language model.
 
-Unlock `/jobs` and use Custom research on Discover to run one search. Pick Quick, Standard, or Deep. Those are approximate ceilings of $0.10, $0.35, and $0.75. The page records the request and asks GitHub Actions to run `research-jobs.yml` with the query, depth, and run id. Refresh jobs still collects boards only. A manual run from Actions can leave depth empty; a query without a depth uses the Quick query plan and the scheduled call ceiling.
+Unlock `/jobs` and use Custom research on Discover to run one search. Pick Quick, Standard, or Deep. Those are approximate ceilings of $0.10, $0.35, and $0.75. The page records the request and asks GitHub Actions to run `research-jobs.yml` with the query, depth, and run id. Refresh jobs still collects boards only and does not start AI research. A workflow run with no search text does not call the model.
 
 ## Deploy on Vercel
 

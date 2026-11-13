@@ -165,10 +165,9 @@ test("a failed search is a partial run and does not invent jobs", async () => {
   assert.equal(estimateResearchUsd("unknown-model", summary.usage), null);
 });
 
-test("research schedule is Tuesday and Friday morning in Vancouver", () => {
-  assert.equal(shouldRunResearch(new Date("2026-11-10T14:00:00Z"), "schedule"), true);
-  assert.equal(shouldRunResearch(new Date("2026-11-13T14:00:00Z"), "schedule"), true);
-  assert.equal(shouldRunResearch(new Date("2026-11-12T14:00:00Z"), "schedule"), false);
+test("scheduled research never runs, and a page search still can", () => {
+  assert.equal(shouldRunResearch(new Date("2026-11-10T14:00:00Z"), "schedule"), false);
+  assert.equal(shouldRunResearch(new Date("2026-11-13T14:00:00Z"), "schedule"), false);
   assert.equal(shouldRunResearch(new Date("2026-11-12T14:00:00Z"), "workflow_dispatch"), true);
 });
 

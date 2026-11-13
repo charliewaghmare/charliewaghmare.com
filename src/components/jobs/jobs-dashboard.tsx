@@ -626,7 +626,7 @@ function SettingsPanel({
       <section className="td-card p-4 sm:p-5">
         <h2 className="type-section text-[1.15rem]">Custom search</h2>
         <p className="td-muted mt-2 text-sm leading-6">
-          Custom research runs from Discover while edit mode is unlocked. Scheduled research still runs on its own.
+          Custom research runs from Discover while edit mode is unlocked. It does not run on a schedule.
         </p>
         <textarea
           className="jd-input mt-4 min-h-28"

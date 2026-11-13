@@ -17,11 +17,9 @@ export function vancouverLocal(now: Date): { hour: number; weekday: number } {
   return { hour: local.getUTCHours(), weekday: local.getUTCDay() };
 }
 
-/** Tuesday and Friday at 6:00 America/Vancouver. Manual runs are not limited to those mornings. */
-export function shouldRunResearch(now: Date, trigger: string): boolean {
-  if (trigger !== "schedule") return true;
-  const local = vancouverLocal(now);
-  return local.hour === 6 && (local.weekday === 2 || local.weekday === 5);
+/** Scheduled research is off. A run starts only from an explicit search on the jobs page. */
+export function shouldRunResearch(_now: Date, trigger: string): boolean {
+  return trigger !== "schedule";
 }
 
 function utcOnNthSunday(year: number, monthIndex: number, nth: number, utcHour: number): number {
