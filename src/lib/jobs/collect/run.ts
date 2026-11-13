@@ -3,7 +3,7 @@ import { fetchBoard, SourceFailure } from "@/lib/jobs/collect/fetch-source";
 import { persistCollection, type RunSummary, type SourceResult } from "@/lib/jobs/collect/persist";
 import { assessPosting } from "@/lib/jobs/collect/rules";
 import { shouldRunScheduled } from "@/lib/jobs/collect/schedule";
-import { activeBoards, watchlist, type WatchCompany } from "@/lib/jobs/collect/watchlist";
+import { activeBoards, mergeBoards, watchlist, type WatchCompany } from "@/lib/jobs/collect/watchlist";
 
 export async function collectJobs(options: {
   trigger: string;
@@ -17,7 +17,12 @@ export async function collectJobs(options: {
     console.log("Skipping scheduled run until 6:00 America/Vancouver.");
     return null;
   }
-  const boards = activeBoards().filter((company) =>
+  let boards = activeBoards();
+  if (!options.dryRun) {
+    const stored = await loadStoredBoards(collectorClient());
+    boards = mergeBoards(boards, stored);
+  }
+  boards = boards.filter((company) =>
     options.only ? company.boardId === options.only || company.name === options.only : true,
   );
   const results: SourceResult[] = [];
@@ -97,6 +102,34 @@ export async function collectJobs(options: {
       .eq("id", runId);
     throw error;
   }
+}
+
+async function loadStoredBoards(db: SupabaseClient): Promise<WatchCompany[]> {
+  const { data, error } = await db
+    .from("companies")
+    .select("name, website, careers_url, ats_provider, ats_board_id, categories, geographic_relevance, enabled, why_interesting")
+    .eq("enabled", true)
+    .eq("is_sample", false);
+  if (error || !data) return [];
+  return data.flatMap((row) => {
+    const provider = row.ats_provider;
+    if (provider !== "greenhouse" && provider !== "lever" && provider !== "ashby") return [];
+    if (!row.ats_board_id) return [];
+    return [
+      {
+        name: row.name,
+        website: row.website,
+        careersUrl: row.careers_url,
+        provider,
+        boardId: row.ats_board_id,
+        region: "global" as const,
+        categories: row.categories ?? [],
+        geographicRelevance: row.geographic_relevance ?? "",
+        enabled: true,
+        why: row.why_interesting ?? "Verified board found during research.",
+      },
+    ];
+  });
 }
 
 function collectorClient(): SupabaseClient {

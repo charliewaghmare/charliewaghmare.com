@@ -140,6 +140,7 @@ export type JobsPageModel = {
   customSearches: StoredSearch[];
   lastSuccessfulRefresh: string | null;
   collection: CollectionStatus | null;
+  research: CollectionStatus | null;
   databaseConfigured: boolean;
   pinConfigured: boolean;
 };

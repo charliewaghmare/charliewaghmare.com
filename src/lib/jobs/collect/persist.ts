@@ -332,7 +332,10 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
     if (!data || data.length === 0) break;
     for (const row of data) {
       counts.reviewed += 1;
-      const source = row.source === "lever" || row.source === "ashby" || row.source === "greenhouse" ? row.source : "greenhouse";
+      const source =
+        row.source === "lever" || row.source === "ashby" || row.source === "greenhouse" || row.source === "web"
+          ? row.source
+          : "greenhouse";
       const assessment = assessPosting({
         provider: source,
         sourceId: row.source_id ?? row.id,

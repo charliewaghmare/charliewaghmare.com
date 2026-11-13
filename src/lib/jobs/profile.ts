@@ -18,7 +18,7 @@ export const defaultSearchPreferences: SearchPreferences = {
     { id: "motorsports", label: "Motorsports, including F1, NASCAR and IndyCar", level: "high" },
     { id: "running", label: "Running and sports performance technology", level: "high" },
     { id: "wearables", label: "Wearables and sports equipment development", level: "high" },
-    { id: "materials", label: "Materials engineering", level: "medium" },
+    { id: "materials", label: "Materials engineering", level: "high" },
     { id: "manufacturing", label: "Manufacturing", level: "medium" },
     { id: "ai", label: "AI and software engineering", level: "medium" },
     { id: "automation", label: "Automation and robotics", level: "medium" },

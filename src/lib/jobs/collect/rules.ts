@@ -1,9 +1,9 @@
 import type { ScoreBreakdown } from "@/lib/jobs/types";
 
-export const SCORING_VERSION = "phase2.5-rules-v1";
+export const SCORING_VERSION = "phase3a-rules-v1";
 
 export type CollectedPosting = {
-  provider: "greenhouse" | "lever" | "ashby";
+  provider: "greenhouse" | "lever" | "ashby" | "web";
   sourceId: string;
   title: string;
   companyName: string;
@@ -89,7 +89,12 @@ const CATEGORIES: CategoryRule[] = [
     pattern: /\b(finance|financial|investment|quantitative|fintech)\b/,
   },
   { id: "Manufacturing", level: "medium", boost: false, pattern: /\bmanufactur/ },
-  { id: "Materials", level: "medium", boost: false, pattern: /\bmaterials?\b/ },
+  {
+    id: "Materials engineering",
+    level: "high",
+    boost: false,
+    pattern: /\b(materials? engineering|materials? engineer|materials intern|metallurg)/,
+  },
   { id: "Robotics", level: "medium", boost: false, pattern: /\brobotic/ },
   { id: "Automation", level: "medium", boost: false, pattern: /\bautomation\b/ },
 ];
@@ -454,6 +459,7 @@ function wherePhrase(location: string | null, locationScore: number): string {
 function careerSentenceFor(focus: string, technical: boolean): string {
   if (focus === "Software") return "It offers practical software experience.";
   if (focus === "Mechanical engineering") return "It offers hands-on mechanical engineering experience.";
+  if (focus === "Materials engineering") return "It offers materials engineering experience.";
   if (focus === "Motorsports") return "It is directly connected to motorsports engineering.";
   if (focus === "Finance") return "It offers experience in finance.";
   if (focus === "AI and research") return "It offers research experience.";

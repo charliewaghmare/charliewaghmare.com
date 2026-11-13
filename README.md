@@ -103,7 +103,26 @@ The button reports that a refresh was requested. It does not wait for new jobs i
 
 When the database is connected, `/jobs` shows stored listings only. Sample cards stay on the page only when Supabase is not configured.
 
-Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `phase2.5-rules-v1`.
+Materials engineering is a high-interest field, alongside mechanical engineering, product development, motorsports, and running technology.
+
+Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `phase3a-rules-v1`.
+
+### Research
+
+Twice a week, GitHub Actions runs `.github/workflows/research-jobs.yml` at 6:00 AM America/Vancouver on Tuesday and Friday. It uses the OpenAI Responses API with the `web_search` tool (`gpt-6-astra` unless `OPENAI_RESEARCH_MODEL` is set). A run is limited to 4 searches, 8 page checks, and 3 new companies.
+
+Add these GitHub Actions secrets in addition to the collector secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | OpenAI key used only by the research workflow |
+| `OPENAI_RESEARCH_MODEL` | Optional. Defaults to `gpt-6-astra` |
+
+Apply `supabase/migrations/20261113020000_jobs_research.sql` so query history can be stored. Research still saves jobs if that table is missing; it just cannot remember past queries.
+
+Web search is $10 per 1,000 calls on OpenAI's pricing page, plus model tokens. `gpt-6-astra` short-context rates on that page are $10 per million input tokens and $50 per million output tokens. The workflow stores token counts and a dollar figure only when the API returns usage for a model with those published rates.
+
+The dashboard does not start research. Run the workflow manually for a one-off search, and pass the `query` input when you want a single topic. Custom search notes on the page are still not executed.
 
 ## Deploy on Vercel
 

@@ -78,6 +78,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     customSearches: [],
     lastSuccessfulRefresh: null,
     collection: null,
+    research: null,
     databaseConfigured: databaseConfigured(),
     pinConfigured: pinConfigured(),
   };
@@ -106,7 +107,8 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
 
   const rows = (fallback.data as JobRow[]).filter((row) => row.is_sample !== true);
   const companies = await loadCompanies(reader);
-  const collection = await loadCollectionStatus();
+  const collection = await loadRunStatus("collection");
+  const research = await loadRunStatus("research");
   if (rows.length === 0) {
     return {
       ...emptyDatabase(
@@ -114,6 +116,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
       ),
       companies,
       collection,
+      research,
       lastSuccessfulRefresh: collection?.status === "success" ? collection.completedAt : null,
       databaseConfigured: databaseConfigured(),
       pinConfigured: pinConfigured(),
@@ -217,6 +220,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     customSearches,
     lastSuccessfulRefresh: lastSuccessfulRefresh ?? (collection?.status === "success" ? collection.completedAt : null),
     collection,
+    research,
     databaseConfigured: true,
     pinConfigured: pinConfigured(),
   };
@@ -233,6 +237,7 @@ function emptyDatabase(note: string): JobsPageModel {
     customSearches: [],
     lastSuccessfulRefresh: null,
     collection: null,
+    research: null,
     databaseConfigured: true,
     pinConfigured: false,
   };
@@ -257,23 +262,33 @@ async function loadCompanies(reader: SupabaseClient): Promise<CompanyTarget[]> {
   return ((fallback.data ?? []) as CompanyRow[]).filter((row) => row.is_sample !== true).map(toCompany);
 }
 
-async function loadCollectionStatus(): Promise<JobsPageModel["collection"]> {
+async function loadRunStatus(runType: "collection" | "research"): Promise<JobsPageModel["collection"]> {
   const service = serviceClient();
   if (!service) return null;
   const { data } = await service
     .from("search_runs")
     .select("status, started_at, completed_at, error, summary, run_type")
-    .eq("run_type", "collection")
+    .eq("run_type", runType)
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (!data) return null;
-  const summary = data.summary as { inserted?: number; updated?: number; errors?: string[] } | null;
+  const summary = data.summary as {
+    inserted?: number;
+    updated?: number;
+    imported?: number;
+    eligible?: number;
+    companiesAdded?: number;
+    estimatedUsd?: number | null;
+    errors?: string[];
+  } | null;
   const detail = data.error
     ? String(data.error)
-    : summary
-      ? `${summary.inserted ?? 0} new, ${summary.updated ?? 0} updated`
-      : null;
+    : runType === "research" && summary
+      ? `${summary.imported ?? 0} imported, ${summary.eligible ?? 0} eligible, ${summary.companiesAdded ?? 0} companies${summary.estimatedUsd != null ? `, about $${summary.estimatedUsd}` : ""}`
+      : summary
+        ? `${summary.inserted ?? 0} new, ${summary.updated ?? 0} updated`
+        : null;
   return {
     status: data.status as string,
     startedAt: data.started_at as string,

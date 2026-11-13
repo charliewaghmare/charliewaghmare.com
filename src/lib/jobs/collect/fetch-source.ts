@@ -20,7 +20,8 @@ export async function fetchBoard(
   if (!company.provider || !company.boardId) return [];
   if (company.provider === "greenhouse") return fetchGreenhouse(company, fetchImpl);
   if (company.provider === "lever") return fetchLever(company, fetchImpl);
-  return fetchAshby(company, fetchImpl);
+  if (company.provider === "ashby") return fetchAshby(company, fetchImpl);
+  return [];
 }
 
 async function fetchGreenhouse(

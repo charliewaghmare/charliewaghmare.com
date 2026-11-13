@@ -1,0 +1,34 @@
+name: Research jobs
+
+on:
+  schedule:
+    # 13:00 UTC is 6:00 AM Pacific Daylight Time. 14:00 UTC is 6:00 AM Pacific Standard Time.
+    # The script runs only on Tuesday and Friday at 6:00 America/Vancouver, so only one of these does the research.
+    - cron: "0 13 * * 2,5"
+    - cron: "0 14 * * 2,5"
+  workflow_dispatch:
+    inputs:
+      query:
+        description: Optional single search, such as motorsports engineering internships
+        required: false
+        type: string
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/research-jobs.ts
+        env:
+          RESEARCH_TRIGGER: ${{ github.event_name }}
+          RESEARCH_QUERY: ${{ inputs.query }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_RESEARCH_MODEL: ${{ secrets.OPENAI_RESEARCH_MODEL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

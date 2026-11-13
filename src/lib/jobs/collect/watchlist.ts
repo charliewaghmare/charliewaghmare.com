@@ -189,3 +189,16 @@ export const watchlist: WatchCompany[] = [
 export function activeBoards(list = watchlist): WatchCompany[] {
   return list.filter((company) => company.enabled && company.provider && company.boardId);
 }
+
+export function mergeBoards(base: WatchCompany[], extra: WatchCompany[]): WatchCompany[] {
+  const seen = new Set(base.filter((company) => company.boardId).map((company) => `${company.provider}:${company.boardId}`));
+  const merged = [...base];
+  for (const company of extra) {
+    if (!company.enabled || !company.provider || !company.boardId) continue;
+    const key = `${company.provider}:${company.boardId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(company);
+  }
+  return merged;
+}

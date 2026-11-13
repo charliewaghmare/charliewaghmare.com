@@ -193,6 +193,15 @@ export function JobsDashboard({
           {model.collection.detail ? ` · ${model.collection.detail}` : ""}
         </p>
       ) : null}
+      {model.research ? (
+        <p className="td-muted mt-2 text-sm leading-6">
+          Latest research: {model.research.status}
+          {model.research.completedAt
+            ? ` · ${formatTimestamp(model.research.completedAt)}`
+            : ` · started ${formatTimestamp(model.research.startedAt)}`}
+          {model.research.detail ? ` · ${model.research.detail}` : ""}
+        </p>
+      ) : null}
 
       <nav className="mt-8 flex flex-wrap gap-2" aria-label="Job sections">
         {(["discover", "companies"] as View[]).map((item) => (
@@ -548,7 +557,7 @@ function SettingsPanel({
       <section className="td-card p-4 sm:p-5">
         <h2 className="type-section text-[1.15rem]">Custom search</h2>
         <p className="td-muted mt-2 text-sm leading-6">
-          Write a note for a later research pass. This does not search the web.
+          Write a note for a later manual research pass. Scheduled research runs on its own. This box does not search the web.
         </p>
         <textarea
           className="jd-input mt-4 min-h-28"
