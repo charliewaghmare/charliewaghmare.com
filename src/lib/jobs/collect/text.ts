@@ -74,3 +74,13 @@ export function inferArrangement(
   }
   return null;
 }
+
+/** Normalize provider country codes without guessing an unknown location. */
+export function normalizeCountry(value: string | null | undefined): string | null {
+  const text = value?.trim();
+  if (!text) return null;
+  if (/^(ca|can|canada)$/i.test(text)) return "Canada";
+  if (/^(us|usa|united states|united states of america)$/i.test(text)) return "United States";
+  if (/^(gb|gbr|uk|united kingdom)$/i.test(text)) return "United Kingdom";
+  return text;
+}

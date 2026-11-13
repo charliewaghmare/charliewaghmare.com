@@ -12,7 +12,8 @@ export function detectAts(value: string | null | undefined): AtsHit | null {
     return null;
   }
   const host = url.hostname.toLowerCase();
-  const segment = decodeURIComponent(url.pathname.split("/").filter(Boolean)[0] ?? "");
+  let segment: string;
+  try { segment = decodeURIComponent(url.pathname.split("/").filter(Boolean)[0] ?? ""); } catch { return null; }
   if (!segment || !/^[a-z0-9_-]{2,80}$/i.test(segment)) return null;
   if (host === "boards.greenhouse.io" || host === "job-boards.greenhouse.io") {
     return { provider: "greenhouse", boardId: segment };
@@ -25,7 +26,7 @@ export function detectAts(value: string | null | undefined): AtsHit | null {
   if (host === "apply.workable.com") return { provider: "workable", boardId: segment };
   if (host.endsWith(".myworkdayjobs.com")) {
     const parts = url.pathname.split("/").filter(Boolean);
-    const site = parts[0] === "en-US" || parts[0] === "en-CA" ? parts[1] : parts[0];
+    const site = /^[a-z]{2}-[A-Z]{2}$/.test(parts[0]) ? parts[1] : parts[0];
     const tenant = host.split(".")[0];
     if (!site || !tenant) return null;
     return { provider: "workday", boardId: `${host}/${tenant}/${site}` };
@@ -62,4 +63,19 @@ function hostOf(value: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+/** Stable identity for supported ATS posting URLs; board/search pages have none. */
+export function atsPostingIdentity(value: string | null | undefined): string | null {
+  const board = detectAts(value);
+  if (!board || !value) return null;
+  const parts = new URL(value).pathname.split("/").filter(Boolean);
+  let jobId: string | undefined;
+  if (board.provider === "greenhouse") jobId = parts[parts.indexOf("jobs") + 1];
+  else if (board.provider === "workable") jobId = parts[parts.indexOf("j") + 1];
+  else if (board.provider === "workday") jobId = parts.includes("job") ? parts.at(-1) : undefined;
+  else jobId = parts[1];
+  if (!jobId || jobId === board.boardId) return null;
+  if (board.provider === "smartrecruiters") jobId = jobId.split("-")[0];
+  return `${board.provider}:${board.boardId}:${jobId}`;
 }

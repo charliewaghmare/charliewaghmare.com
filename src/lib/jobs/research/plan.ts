@@ -1,5 +1,7 @@
 import { RESEARCH_BUDGET } from "@/lib/jobs/research/budget";
-import { RESEARCH_TRACKS, type ResearchTrack } from "@/lib/jobs/research/tracks";
+import { researchTracks, type ResearchTrack } from "@/lib/jobs/research/tracks";
+
+export const QUERY_COOLDOWN_MS = 21 * 86_400_000;
 
 export type PlannedQuery = { track: string; query: string };
 
@@ -8,7 +10,7 @@ export function normalizeQuery(query: string): string {
 }
 
 export function planResearch(input: {
-  history?: string[];
+  history?: (string | { query: string; ranAt: string })[];
   focus?: string | null;
   now?: Date;
   tracksPerRun?: number;
@@ -20,10 +22,12 @@ export function planResearch(input: {
   if (focus) {
     return [{ track: "manual", query: focus.slice(0, 180) }];
   }
-  const tracks = input.tracks ?? RESEARCH_TRACKS;
+  const tracks = input.tracks ?? researchTracks(input.now);
   const perRun = input.tracksPerRun ?? RESEARCH_BUDGET.tracksPerRun;
   const perTrack = input.queriesPerTrack ?? RESEARCH_BUDGET.queriesPerTrack;
-  const seen = new Set((input.history ?? []).map(normalizeQuery));
+  const cutoff = (input.now ?? new Date()).getTime() - QUERY_COOLDOWN_MS;
+  const recent = (input.history ?? []).filter((entry) => typeof entry === "string" || Date.parse(entry.ranAt) >= cutoff);
+  const seen = new Set(recent.map((entry) => normalizeQuery(typeof entry === "string" ? entry : entry.query)));
   const start = tracks.length === 0 ? 0 : Math.floor((input.now ?? new Date()).getTime() / 86_400_000) % tracks.length;
   const coverage = input.coverage ?? {};
   const ranked = tracks

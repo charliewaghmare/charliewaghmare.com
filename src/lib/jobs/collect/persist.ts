@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decideWrite, keepEmployerRecord, nextLifecycle } from "@/lib/jobs/collect/dedupe";
-import { sameRequisition } from "@/lib/jobs/research/ats";
 import { assessPosting, SCORING_VERSION, type Assessment, type CollectedPosting } from "@/lib/jobs/collect/rules";
 import { canonicalUrl } from "@/lib/jobs/collect/text";
 import type { WatchCompany } from "@/lib/jobs/collect/watchlist";
@@ -10,6 +9,8 @@ export type SourceResult = {
   ok: boolean;
   error: string | null;
   postings: CollectedPosting[];
+  /** Only complete employer snapshots can establish that a posting disappeared. */
+  complete?: boolean;
 };
 
 export type SourceTally = {
@@ -91,18 +92,27 @@ export async function persistCollection(
     errors: results.flatMap((result) => (result.error ? [result.error] : [])),
   };
 
+  const { data: customScopes, error: scopeError } = await db.from("jobs")
+    .select("source, source_id, source_url").eq("raw_metadata->>allowInternational", "true");
+  if (scopeError) throw new Error(`Could not load custom search scope: ${scopeError.message}`);
+  const internationalKeys = new Set((customScopes ?? []).map((row) => `${row.source}:${row.source_id}`));
+  const internationalUrls = new Set((customScopes ?? []).map((row) => row.source_url).filter(Boolean));
+  const companyIds = new Map<string, string>();
   for (const company of companies) {
     const result = results.find((item) => item.company.name === company.name);
-    await upsertCompany(db, company, Boolean(result?.ok));
+    const id = await upsertCompany(db, company, Boolean(result?.ok));
+    if (id) companyIds.set(company.name, id);
   }
 
   for (const result of results) {
-    const companyId = await companyIdByName(db, result.company.name);
+    const companyId = companyIds.get(result.company.name) ?? await upsertCompany(db, result.company, result.ok);
     if (!companyId || !result.ok) continue;
     const seen = new Set<string>();
     const tally = emptyTally(result.company.name, result.company.provider ?? "unknown");
     tally.fetched = result.postings.length;
-    for (const posting of result.postings) {
+    for (const incoming of result.postings) {
+      const posting = internationalKeys.has(`${incoming.provider}:${incoming.sourceId}`) || internationalUrls.has(canonicalUrl(incoming.sourceUrl))
+        ? { ...incoming, allowInternational: true } : incoming;
       const assessment = assessPosting(posting);
       countAssessment(summary, assessment);
       noteTally(tally, assessment);
@@ -122,7 +132,9 @@ export async function persistCollection(
       if (outcome !== "skipped") seen.add(posting.sourceId);
     }
     summary.bySource.push(tally);
-    const lifecycle = await markMissing(db, result.company, companyId, seen);
+    const lifecycle = result.complete === true && result.company.provider
+      ? await markMissing(db, result.company, companyId, seen)
+      : { stale: 0, closed: 0 };
     summary.stale += lifecycle.stale;
     summary.closed += lifecycle.closed;
   }
@@ -175,34 +187,30 @@ function noteTally(tally: SourceTally, assessment: Assessment): void {
   else if (assessment.status === "ineligible_professional_role") tally.ineligible += 1;
 }
 
-async function companyIdByName(db: SupabaseClient, name: string): Promise<string | null> {
-  const { data } = await db.from("companies").select("id").eq("name", name).maybeSingle();
-  return (data?.id as string | undefined) ?? null;
-}
-
 async function upsertCompany(
   db: SupabaseClient,
   company: WatchCompany,
   checked: boolean,
 ): Promise<string | null> {
-  const { data: existing } = await db
+  const { data: existing, error: lookupError } = await db
     .from("companies")
-    .select("id")
+    .select("id, website, careers_url, ats_provider, ats_board_id, enabled, categories")
     .eq("name", company.name)
     .maybeSingle();
+  if (lookupError) throw new Error(`Company lookup failed: ${lookupError.message}`);
   const row = {
     name: company.name,
-    website: company.website,
-    careers_url: company.careersUrl,
+    website: company.website ?? existing?.website,
+    careers_url: company.careersUrl ?? existing?.careers_url,
     industry: company.categories[0] ?? null,
     why_interesting: company.why,
-    ats_provider: company.provider,
-    ats_board_id: company.boardId,
-    enabled: company.enabled,
+    ats_provider: company.provider ?? existing?.ats_provider,
+    ats_board_id: company.boardId ?? existing?.ats_board_id,
+    enabled: existing?.enabled ?? company.enabled,
     ...(checked ? { last_checked_at: new Date().toISOString() } : {}),
-    categories: company.categories,
+    categories: company.categories.length ? company.categories : existing?.categories ?? [],
     geographic_relevance: company.geographicRelevance,
-    monitoring_status: company.provider && company.boardId ? "active" : "pending",
+    monitoring_status: (company.provider ?? existing?.ats_provider) && (company.boardId ?? existing?.ats_board_id) ? "active" : "pending",
     is_sample: false,
     discovery_status: "watching",
   };
@@ -216,47 +224,52 @@ async function upsertCompany(
   return data.id as string;
 }
 
-async function upsertJob(
+export async function upsertJob(
   db: SupabaseClient,
   companyId: string,
   posting: CollectedPosting,
   scored: Assessment,
 ): Promise<"inserted" | "updated" | "duplicate" | "skipped"> {
   const sourceUrl = canonicalUrl(posting.sourceUrl);
-  const [{ data: byIdentity }, { data: byUrl }, { data: suppressed }, { data: siblings }] = await Promise.all([
+  const lookups = await Promise.all([
     db
       .from("jobs")
-      .select("id, discovered_at, source")
+      .select("id, discovered_at, source, company_id")
       .eq("source", posting.provider)
       .eq("source_id", posting.sourceId)
       .maybeSingle(),
     sourceUrl
-      ? db.from("jobs").select("id, discovered_at, source").eq("source_url", sourceUrl).maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? db.from("jobs").select("id, discovered_at, source, company_id").eq("source_url", sourceUrl).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     db
       .from("job_suppressions")
       .select("id")
       .eq("source", posting.provider)
       .eq("source_id", posting.sourceId)
       .maybeSingle(),
-    db.from("jobs").select("id, title, location, source").eq("company_id", companyId).limit(80),
+    sourceUrl
+      ? db.from("job_suppressions").select("id").eq("source_url", sourceUrl).limit(1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
-  const secondary = (siblings ?? []).find(
-    (row) =>
-      row.id !== byIdentity?.id &&
-      sameRequisition(
-        { company: posting.companyName, title: posting.title, location: posting.location },
-        { company: posting.companyName, title: row.title, location: row.location },
-      ),
-  );
+  for (const result of lookups) {
+    if (result.error) throw new Error(`Job identity lookup failed: ${result.error.message}`);
+  }
+  const [identityResult, urlResult, suppressionResult, urlSuppressionResult] = lookups;
+  const byIdentity = identityResult.data;
+  const byUrl = urlResult.data;
+  if (byIdentity && byIdentity.company_id !== companyId) {
+    throw new Error(`Source identity collision for ${posting.provider}:${posting.sourceId}; refusing to overwrite another employer.`);
+  }
+  if (byIdentity && byUrl && byIdentity.id !== byUrl.id) throw new Error("Conflicting job identities require review; no records were merged.");
+  const suppressed = suppressionResult.data || urlSuppressionResult.data;
   const decision = decideWrite({
-    existingByIdentity: Boolean(byIdentity || secondary),
+    existingByIdentity: Boolean(byIdentity),
     existingByUrl: Boolean(byUrl),
     suppressed: Boolean(suppressed),
   });
   if (decision.action === "skip") return "skipped";
   const now = new Date().toISOString();
-  const existing = byIdentity ?? byUrl ?? secondary;
+  const existing = byIdentity ?? byUrl;
   const row = {
     source: posting.provider,
     source_id: posting.sourceId,
@@ -283,7 +296,7 @@ async function upsertJob(
     salary_currency: posting.salaryCurrency,
     salary_period: posting.salaryPeriod,
     active: !decision.keepInactive,
-    lifecycle_status: decision.keepInactive ? "closed" : "active",
+    lifecycle_status: "active",
     verification_status: "verified",
     miss_count: 0,
     work_authorization_note: scored.gaps.find((gap) => gap.includes("authorization")) ?? null,
@@ -310,17 +323,19 @@ async function markMissing(
   companyId: string,
   seen: Set<string>,
 ): Promise<{ stale: number; closed: number }> {
-  const { data } = await db
+  const { data, error } = await db
     .from("jobs")
     .select("id, source_id, miss_count, active")
     .eq("company_id", companyId)
     .eq("source", company.listingSource ?? company.provider);
+  if (error) throw new Error(`Lifecycle lookup failed: ${error.message}`);
   let stale = 0;
   let closed = 0;
   for (const row of data ?? []) {
     if (!row.active || !row.source_id || seen.has(row.source_id)) {
       if (row.active && row.source_id && seen.has(row.source_id)) {
-        await db.from("jobs").update({ miss_count: 0, lifecycle_status: "active" }).eq("id", row.id);
+        const { error: updateError } = await db.from("jobs").update({ miss_count: 0, lifecycle_status: "active" }).eq("id", row.id);
+        if (updateError) throw new Error(`Lifecycle update failed: ${updateError.message}`);
       }
       continue;
     }
@@ -329,7 +344,7 @@ async function markMissing(
       sourceOk: true,
       missCount: row.miss_count ?? 0,
     });
-    await db
+    const { error: updateError } = await db
       .from("jobs")
       .update({
         miss_count: next.missCount,
@@ -338,6 +353,7 @@ async function markMissing(
         updated_at: new Date().toISOString(),
       })
       .eq("id", row.id);
+    if (updateError) throw new Error(`Lifecycle update failed: ${updateError.message}`);
     if (next.lifecycle === "stale") stale += 1;
     if (next.lifecycle === "closed") closed += 1;
   }
@@ -350,6 +366,8 @@ function metadataFor(posting: CollectedPosting, assessment: Assessment): Record<
     eligibility: assessment.status,
     eligibilityReason: assessment.reason,
     classificationVersion: SCORING_VERSION,
+    provenance: posting.provenance ?? (posting.provider === "web" ? "web-research" : "employer-api"),
+    allowInternational: posting.allowInternational === true,
     categoryEvidence: assessment.categories.map((category) => ({
       category: category.id,
       evidence: category.evidence,
@@ -358,12 +376,13 @@ function metadataFor(posting: CollectedPosting, assessment: Assessment): Record<
 }
 
 async function withholdJob(db: SupabaseClient, posting: CollectedPosting, assessment: Assessment): Promise<boolean> {
-  const { data } = await db
+  const { data, error: lookupError } = await db
     .from("jobs")
     .select("id, raw_metadata")
     .eq("source", posting.provider)
     .eq("source_id", posting.sourceId)
     .maybeSingle();
+  if (lookupError) throw new Error(`Job lookup failed: ${lookupError.message}`);
   if (!data?.id) return false;
   const prior = data.raw_metadata && typeof data.raw_metadata === "object" ? data.raw_metadata : {};
   const { error } = await db
@@ -388,19 +407,22 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
   quarantined: number;
 }> {
   const counts = { reviewed: 0, retained: 0, excludedProfessional: 0, quarantined: 0 };
-  const { data: suppressed } = await db.from("job_suppressions").select("source, source_id");
+  const { data: suppressed, error: suppressionError } = await db.from("job_suppressions").select("source, source_id, source_url");
+  if (suppressionError) throw new Error(`Suppression lookup failed: ${suppressionError.message}`);
   const suppressedKeys = new Set(
     (suppressed ?? []).map((row) => `${row.source}:${row.source_id}`),
   );
+  const suppressedUrls = new Set((suppressed ?? []).map((row) => row.source_url).filter(Boolean));
   let from = 0;
   const page = 200;
   for (;;) {
     const { data, error } = await db
       .from("jobs")
       .select(
-        "id, source, source_id, source_url, application_url, title, location, country, work_arrangement, description, employment_type, posted_on, salary_min, salary_max, salary_currency, salary_period, lifecycle_status, raw_metadata, is_sample",
+        "id, source, source_id, source_url, application_url, title, location, country, work_arrangement, description, employment_type, posted_on, salary_min, salary_max, salary_currency, salary_period, lifecycle_status, raw_metadata, is_sample, active, match_score, scoring_version",
       )
       .eq("is_sample", false)
+      .order("id")
       .range(from, from + page - 1);
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
@@ -416,6 +438,7 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
         row.source === "web"
           ? row.source
           : "web";
+      const metadataBefore = row.raw_metadata as Record<string, unknown> | null;
       const assessment = assessPosting({
         provider: source,
         sourceId: row.source_id ?? row.id,
@@ -434,8 +457,9 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
         salaryMax: row.salary_max,
         salaryCurrency: row.salary_currency,
         salaryPeriod: row.salary_period,
+        allowInternational: metadataBefore?.allowInternational === true,
       });
-      const suppressedRow = suppressedKeys.has(`${row.source}:${row.source_id}`);
+      const suppressedRow = suppressedKeys.has(`${row.source}:${row.source_id}`) || suppressedUrls.has(row.source_url);
       const closed = row.lifecycle_status === "closed";
       const publish = assessment.publish && !suppressedRow && !closed;
       if (publish) counts.retained += 1;
@@ -445,8 +469,11 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
         row.raw_metadata && typeof row.raw_metadata === "object" && !Array.isArray(row.raw_metadata)
           ? (row.raw_metadata as Record<string, unknown>)
           : {};
+      if (row.scoring_version === SCORING_VERSION && row.active === publish &&
+          row.match_score === (publish ? assessment.score : 0) && prior.eligibilityReason === assessment.reason) continue;
       const metadata = metadataFor(
-        { departments: Array.isArray(prior.departments) ? (prior.departments as string[]) : [] } as CollectedPosting,
+        { departments: Array.isArray(prior.departments) ? (prior.departments as string[]) : [],
+          provider: source, provenance: prior.provenance, allowInternational: prior.allowInternational === true } as CollectedPosting,
         assessment,
       );
       const { error: updateError } = await db
@@ -473,14 +500,23 @@ export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
 }
 
 async function refreshOpeningFlags(db: SupabaseClient): Promise<void> {
-  const { data } = await db.from("companies").select("id").eq("is_sample", false);
-  for (const company of data ?? []) {
-    const { count } = await db
-      .from("jobs")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", company.id)
-      .eq("active", true);
-    await db.from("companies").update({ has_verified_opening: (count ?? 0) > 0 }).eq("id", company.id);
+  const { data: companies, error } = await db.from("companies")
+    .select("id, has_verified_opening").eq("is_sample", false);
+  if (error) throw new Error(`Could not load company flags: ${error.message}`);
+  const activeCompanies = new Set<string>();
+  for (let offset = 0;; offset += 200) {
+    const { data, error: jobsError } = await db.from("jobs").select("id, company_id")
+      .eq("active", true).eq("is_sample", false).order("id").range(offset, offset + 199);
+    if (jobsError) throw new Error(`Could not refresh company flags: ${jobsError.message}`);
+    for (const job of data ?? []) activeCompanies.add(job.company_id);
+    if (!data || data.length < 200) break;
+  }
+  for (const company of companies ?? []) {
+    const hasOpening = activeCompanies.has(company.id);
+    if (company.has_verified_opening === hasOpening) continue;
+    const { error: updateError } = await db.from("companies")
+      .update({ has_verified_opening: hasOpening }).eq("id", company.id);
+    if (updateError) throw new Error(`Could not update company flag: ${updateError.message}`);
   }
 }
 

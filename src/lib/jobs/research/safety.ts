@@ -1,3 +1,4 @@
+import { stripHtml } from "@/lib/jobs/collect/text";
 export function assertPublicHttps(value: string): URL {
   let url: URL;
   try {
@@ -23,7 +24,11 @@ export function assertPublicHttps(value: string): URL {
 
 function isPrivateIp(host: string): boolean {
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!ipv4) return host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80");
+  if (!ipv4) {
+    const address = host.replace(/^\[|\]$/g, "");
+    // IPv6 literals need explicit public-address handling; reject all for now.
+    return address.includes(":");
+  }
   const parts = ipv4.slice(1).map(Number);
   if (parts.some((part) => part > 255)) return true;
   const [a, b] = parts;
@@ -31,10 +36,7 @@ function isPrivateIp(host: string): boolean {
 }
 
 export function pageText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
+  return stripHtml(html)
     .replace(/\s+/g, " ")
     .trim();
 }

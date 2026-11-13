@@ -1,6 +1,7 @@
+import { normalizeCountry } from "@/lib/jobs/collect/text";
 import type { ScoreBreakdown } from "@/lib/jobs/types";
 
-export const SCORING_VERSION = "phase35-rules-v1";
+export const SCORING_VERSION = "student-rules-v2";
 
 export type JobSource =
   | "greenhouse"
@@ -29,6 +30,8 @@ export type CollectedPosting = {
   salaryMax: number | null;
   salaryCurrency: string | null;
   salaryPeriod: string | null;
+  provenance?: "internship-radar" | "web-research" | "employer-api";
+  allowInternational?: boolean;
 };
 
 export type EligibilityStatus =
@@ -120,13 +123,11 @@ export function isStudentFacing(text: string): boolean {
 }
 
 export function pastTerm(text: string, now: Date): boolean {
-  const year = now.getUTCFullYear();
-  const matches = text.matchAll(/\b(summer|fall|winter|spring)\s+(20\d{2})\b/g);
-  for (const match of matches) {
-    const term = match[1];
-    const termYear = Number(match[2]);
-    if (termYear < year) return true;
-    if (termYear === year && (term === "summer" || term === "spring" || term === "winter")) return true;
+  // A named work term remains current through its final month.
+  const endMonth: Record<string, number> = { winter: 3, spring: 5, summer: 8, fall: 12 };
+  for (const match of text.toLowerCase().matchAll(/\b(summer|fall|winter|spring)\s+(20\d{2})\b/g)) {
+    const end = Date.UTC(Number(match[2]), endMonth[match[1]], 1);
+    if (now.getTime() >= end) return true;
   }
   return false;
 }
@@ -216,7 +217,7 @@ export function assessPosting(
         categories,
       });
     }
-    if (isInternational(posting) && !highInterest && !options?.allowInternational) {
+    if (isInternational(posting) && !highInterest && !(options?.allowInternational ?? posting.allowInternational)) {
       return assessment({
         status: "eligible_student_role",
         publish: false,
@@ -284,7 +285,7 @@ function assessment(input: {
   };
 }
 
-function studentTitleEvidence(title: string): string | null {
+export function studentTitleEvidence(title: string): string | null {
   const patterns: [RegExp, string][] = [
     [/\binternships?\b/, "internship"],
     [/\binterns?\b/, "intern"],
@@ -344,7 +345,7 @@ function degreeBarrier(title: string, description: string): boolean {
 }
 
 function isInternational(posting: CollectedPosting): boolean {
-  if (posting.country && posting.country !== "Canada") return true;
+  if (posting.country) return normalizeCountry(posting.country) !== "Canada";
   const place = (posting.location ?? "").toLowerCase();
   if (!place.trim() || place.trim() === "remote") return false;
   return !/\b(canada|canadian|toronto|vancouver|mississauga|ottawa|montreal|montréal|calgary|edmonton|ontario|british columbia|quebec|québec|alberta|collingwood|owen sound|gta|burnaby|richmond|surrey|georgian)\b/.test(
@@ -392,7 +393,7 @@ function scoreEligible(
 
   const place = `${posting.location ?? ""} ${posting.country ?? ""}`.toLowerCase();
   const remoteListed = posting.workArrangement === "remote" || /\bremote\b/.test(posting.location?.toLowerCase() ?? "");
-  const remoteCanada = remoteListed && (posting.country === "Canada" || /\b(canada|canadian|within canada)\b/.test(place));
+  const remoteCanada = remoteListed && (normalizeCountry(posting.country) === "Canada" || /\b(canada|canadian|within canada)\b/.test(place));
   let location = 40;
   let locationSentence = "The location was not specific enough to treat it as Toronto or Vancouver.";
   if (/\b(toronto|gta|mississauga|north york|scarborough|etobicoke|markham|vaughan|brampton|vancouver|burnaby|richmond|surrey|new westminster|north vancouver|lower mainland)\b/.test(place)) {
@@ -404,11 +405,11 @@ function scoreEligible(
   } else if (remoteCanada) {
     location = 80;
     locationSentence = "Remote work within Canada is a good fit.";
-  } else if (remoteListed && posting.country && posting.country !== "Canada") {
+  } else if (remoteListed && posting.country && normalizeCountry(posting.country) !== "Canada") {
     location = 28;
     locationSentence = "Remote work is listed, but the posting does not say it can be done from Canada.";
     gaps.push("Work authorization and relocation are unknown.");
-  } else if (posting.country === "Canada" || /\b(canada|ontario|british columbia|quebec|québec|alberta)\b/.test(place)) {
+  } else if (normalizeCountry(posting.country) === "Canada" || /\b(canada|ontario|british columbia|quebec|québec|alberta)\b/.test(place)) {
     location = 55;
     locationSentence = "This is elsewhere in Canada, so the location fit is weaker than Toronto or Vancouver.";
   } else if (posting.country || /\b(united states|united kingdom|europe|international)\b/.test(place)) {
@@ -420,7 +421,7 @@ function scoreEligible(
   }
 
   if (
-    posting.country !== "Canada" &&
+    normalizeCountry(posting.country) !== "Canada" &&
     /\b(authorized to work in the (united states|u\.s\.|usa|uk|united kingdom)|u\.s\. citizenship|us citizenship|must be (a )?citizen|no visa sponsorship|unable to sponsor)\b/.test(
       description,
     )
