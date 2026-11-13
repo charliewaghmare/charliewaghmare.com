@@ -103,6 +103,8 @@ The button reports that a refresh was requested. It does not wait for new jobs i
 
 When the database is connected, `/jobs` shows stored listings only. Sample cards stay on the page only when Supabase is not configured.
 
+Discovery keeps internships, co-ops, and other roles with positive evidence they are for current students. A full-time weekly schedule does not disqualify a summer internship. Permanent, senior, and lead roles are removed from the active feed and kept in the database so a later run can restore one if the posting itself changes. Run **Collect jobs** again after this change so existing rows are reclassified. The scoring version is `phase2.5-rules-v1`.
+
 ## Deploy on Vercel
 
 1. Push this repository to GitHub.

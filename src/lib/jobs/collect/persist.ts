@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decideWrite, nextLifecycle } from "@/lib/jobs/collect/dedupe";
-import { eligibility, scorePosting, SCORING_VERSION, type CollectedPosting } from "@/lib/jobs/collect/rules";
+import { assessPosting, SCORING_VERSION, type Assessment, type CollectedPosting } from "@/lib/jobs/collect/rules";
 import { canonicalUrl } from "@/lib/jobs/collect/text";
 import type { WatchCompany } from "@/lib/jobs/collect/watchlist";
 
@@ -17,10 +17,20 @@ export type RunSummary = {
   sourcesFailed: number;
   fetched: number;
   excluded: number;
+  eligibleStudent: number;
+  ineligibleProfessional: number;
+  uncertain: number;
+  relevant: number;
+  belowThreshold: number;
   inserted: number;
   updated: number;
   stale: number;
   closed: number;
+  reviewed: number;
+  retained: number;
+  storedExcluded: number;
+  storedQuarantined: number;
+  examples: string[];
   errors: string[];
 };
 
@@ -35,10 +45,20 @@ export async function persistCollection(
     sourcesFailed: results.filter((result) => result.error).length,
     fetched: results.reduce((sum, result) => sum + result.postings.length, 0),
     excluded: 0,
+    eligibleStudent: 0,
+    ineligibleProfessional: 0,
+    uncertain: 0,
+    relevant: 0,
+    belowThreshold: 0,
     inserted: 0,
     updated: 0,
     stale: 0,
     closed: 0,
+    reviewed: 0,
+    retained: 0,
+    storedExcluded: 0,
+    storedQuarantined: 0,
+    examples: [],
     errors: results.flatMap((result) => (result.error ? [result.error] : [])),
   };
 
@@ -52,13 +72,17 @@ export async function persistCollection(
     if (!companyId || !result.ok) continue;
     const seen = new Set<string>();
     for (const posting of result.postings) {
-      const decision = eligibility(posting);
-      if (!decision.include) {
-        summary.excluded += 1;
+      const assessment = assessPosting(posting);
+      countAssessment(summary, assessment);
+      if (!assessment.publish) {
+        const withheld = await withholdJob(db, posting, assessment);
+        if (withheld) summary.updated += 1;
+        if (summary.examples.length < 12) {
+          summary.examples.push(`${assessment.status}: ${posting.companyName} — ${posting.title}. ${assessment.reason}`);
+        }
         continue;
       }
-      const scored = scorePosting(posting);
-      const outcome = await upsertJob(db, companyId, posting, scored);
+      const outcome = await upsertJob(db, companyId, posting, assessment);
       if (outcome === "inserted") summary.inserted += 1;
       if (outcome === "updated") summary.updated += 1;
       if (outcome !== "skipped") seen.add(posting.sourceId);
@@ -66,18 +90,27 @@ export async function persistCollection(
     const lifecycle = await markMissing(db, result.company, companyId, seen);
     summary.stale += lifecycle.stale;
     summary.closed += lifecycle.closed;
-    const { count } = await db
-      .from("jobs")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .eq("active", true);
-    await db
-      .from("companies")
-      .update({ has_verified_opening: (count ?? 0) > 0 })
-      .eq("id", companyId);
   }
 
+  const reviewed = await reclassifyStoredJobs(db);
+  summary.reviewed = reviewed.reviewed;
+  summary.retained = reviewed.retained;
+  summary.storedExcluded = reviewed.excludedProfessional;
+  summary.storedQuarantined = reviewed.quarantined;
+  await refreshOpeningFlags(db);
   return summary;
+}
+
+function countAssessment(summary: RunSummary, assessment: Assessment): void {
+  if (assessment.publish) {
+    summary.eligibleStudent += 1;
+    if (assessment.score >= 50) summary.relevant += 1;
+    else summary.belowThreshold += 1;
+    return;
+  }
+  summary.excluded += 1;
+  if (assessment.status === "uncertain") summary.uncertain += 1;
+  else if (assessment.status === "ineligible_professional_role") summary.ineligibleProfessional += 1;
 }
 
 async function companyIdByName(db: SupabaseClient, name: string): Promise<string | null> {
@@ -125,7 +158,7 @@ async function upsertJob(
   db: SupabaseClient,
   companyId: string,
   posting: CollectedPosting,
-  scored: ReturnType<typeof scorePosting>,
+  scored: Assessment,
 ): Promise<"inserted" | "updated" | "skipped"> {
   const sourceUrl = canonicalUrl(posting.sourceUrl);
   const [{ data: byIdentity }, { data: byUrl }, { data: suppressed }] = await Promise.all([
@@ -185,7 +218,7 @@ async function upsertJob(
     work_authorization_note: scored.gaps.find((gap) => gap.includes("authorization")) ?? null,
     is_sample: false,
     updated_at: now,
-    raw_metadata: { departments: posting.departments },
+    raw_metadata: metadataFor(posting, scored),
   };
   if (decision.action === "update" && existing?.id) {
     const { error } = await db.from("jobs").update(row).eq("id", existing.id);
@@ -235,6 +268,137 @@ async function markMissing(
     if (next.lifecycle === "closed") closed += 1;
   }
   return { stale, closed };
+}
+
+function metadataFor(posting: CollectedPosting, assessment: Assessment): Record<string, unknown> {
+  return {
+    departments: posting.departments,
+    eligibility: assessment.status,
+    eligibilityReason: assessment.reason,
+    classificationVersion: SCORING_VERSION,
+    categoryEvidence: assessment.categories.map((category) => ({
+      category: category.id,
+      evidence: category.evidence,
+    })),
+  };
+}
+
+async function withholdJob(db: SupabaseClient, posting: CollectedPosting, assessment: Assessment): Promise<boolean> {
+  const { data } = await db
+    .from("jobs")
+    .select("id, raw_metadata")
+    .eq("source", posting.provider)
+    .eq("source_id", posting.sourceId)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const prior = data.raw_metadata && typeof data.raw_metadata === "object" ? data.raw_metadata : {};
+  const { error } = await db
+    .from("jobs")
+    .update({
+      active: false,
+      scoring_version: SCORING_VERSION,
+      recommendation: assessment.reason,
+      category_tags: assessment.tags,
+      raw_metadata: { ...prior, ...metadataFor(posting, assessment) },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", data.id);
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+export async function reclassifyStoredJobs(db: SupabaseClient): Promise<{
+  reviewed: number;
+  retained: number;
+  excludedProfessional: number;
+  quarantined: number;
+}> {
+  const counts = { reviewed: 0, retained: 0, excludedProfessional: 0, quarantined: 0 };
+  const { data: suppressed } = await db.from("job_suppressions").select("source, source_id");
+  const suppressedKeys = new Set(
+    (suppressed ?? []).map((row) => `${row.source}:${row.source_id}`),
+  );
+  let from = 0;
+  const page = 200;
+  for (;;) {
+    const { data, error } = await db
+      .from("jobs")
+      .select(
+        "id, source, source_id, source_url, application_url, title, location, country, work_arrangement, description, employment_type, posted_on, salary_min, salary_max, salary_currency, salary_period, lifecycle_status, raw_metadata, is_sample",
+      )
+      .eq("is_sample", false)
+      .range(from, from + page - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    for (const row of data) {
+      counts.reviewed += 1;
+      const source = row.source === "lever" || row.source === "ashby" || row.source === "greenhouse" ? row.source : "greenhouse";
+      const assessment = assessPosting({
+        provider: source,
+        sourceId: row.source_id ?? row.id,
+        title: row.title,
+        companyName: "",
+        location: row.location,
+        country: row.country,
+        workArrangement: row.work_arrangement,
+        description: row.description ?? "",
+        departments: [],
+        sourceUrl: row.source_url,
+        applicationUrl: row.application_url,
+        postedOn: row.posted_on,
+        employmentType: row.employment_type,
+        salaryMin: row.salary_min,
+        salaryMax: row.salary_max,
+        salaryCurrency: row.salary_currency,
+        salaryPeriod: row.salary_period,
+      });
+      const suppressedRow = suppressedKeys.has(`${row.source}:${row.source_id}`);
+      const closed = row.lifecycle_status === "closed";
+      const publish = assessment.publish && !suppressedRow && !closed;
+      if (publish) counts.retained += 1;
+      else if (assessment.status === "uncertain") counts.quarantined += 1;
+      else if (assessment.status === "ineligible_professional_role") counts.excludedProfessional += 1;
+      const prior =
+        row.raw_metadata && typeof row.raw_metadata === "object" && !Array.isArray(row.raw_metadata)
+          ? (row.raw_metadata as Record<string, unknown>)
+          : {};
+      const metadata = metadataFor(
+        { departments: Array.isArray(prior.departments) ? (prior.departments as string[]) : [] } as CollectedPosting,
+        assessment,
+      );
+      const { error: updateError } = await db
+        .from("jobs")
+        .update({
+          active: publish,
+          match_score: publish ? assessment.score : 0,
+          score_breakdown: assessment.breakdown,
+          scoring_version: SCORING_VERSION,
+          recommendation: publish ? assessment.explanation : assessment.reason,
+          skill_gaps: assessment.gaps,
+          category_tags: assessment.tags,
+          work_authorization_note: assessment.gaps.find((gap) => gap.includes("authorization")) ?? null,
+          raw_metadata: { ...prior, ...metadata, departments: prior.departments ?? metadata.departments },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+      if (updateError) throw new Error(updateError.message);
+    }
+    if (data.length < page) break;
+    from += page;
+  }
+  return counts;
+}
+
+async function refreshOpeningFlags(db: SupabaseClient): Promise<void> {
+  const { data } = await db.from("companies").select("id").eq("is_sample", false);
+  for (const company of data ?? []) {
+    const { count } = await db
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", company.id)
+      .eq("active", true);
+    await db.from("companies").update({ has_verified_opening: (count ?? 0) > 0 }).eq("id", company.id);
+  }
 }
 
 function workTerm(posting: CollectedPosting): string {

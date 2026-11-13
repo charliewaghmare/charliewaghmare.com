@@ -110,7 +110,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   if (rows.length === 0) {
     return {
       ...emptyDatabase(
-        "No stored listings yet. Collection runs daily at 6:00 AM Vancouver time once GitHub Actions secrets are set.",
+        "No current student roles are in the feed. Professional postings stay out of discovery.",
       ),
       companies,
       collection,
@@ -122,6 +122,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   }
 
   const statusById = new Map<string, StatusRow>();
+  const historyJobs: JobListing[] = [];
   let preferences: SearchPreferences | null = null;
   let ignored: IgnoredJob[] = [];
   let customSearches: StoredSearch[] = [];
@@ -158,6 +159,21 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     for (const row of (statusResult.data ?? []) as StatusRow[]) {
       statusById.set(row.job_id, row);
     }
+    const historyResult = await service
+      .from("user_job_status")
+      .select("*")
+      .or("saved.eq.true,applied.eq.true");
+    const missing = ((historyResult.data ?? []) as StatusRow[]).filter((row) => !ids.includes(row.job_id));
+    if (missing.length > 0) {
+      const extraResult = await service.from("jobs").select(jobColumns).in(
+        "id",
+        missing.map((row) => row.job_id),
+      );
+      for (const row of (extraResult.data ?? []) as JobRow[]) {
+        const status = missing.find((item) => item.job_id === row.id) ?? null;
+        historyJobs.push({ ...toJob(row, status, true), inDiscovery: false });
+      }
+    }
     preferences = preferencesFromRow(preferenceResult.data) ?? defaultSearchPreferences;
     ignored = mapIgnored(ignoredResult.data ?? []);
     customSearches = ((searchResult.data ?? []) as {
@@ -191,7 +207,10 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   return {
     source: "database",
     note: null,
-    jobs: rows.map((row) => toJob(row, statusById.get(row.id) ?? null, unlocked)),
+    jobs: [
+      ...rows.map((row) => ({ ...toJob(row, statusById.get(row.id) ?? null, unlocked), inDiscovery: true })),
+      ...historyJobs,
+    ],
     companies,
     preferences,
     ignored,

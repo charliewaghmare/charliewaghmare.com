@@ -56,6 +56,7 @@ export type JobListing = {
   country?: string | null;
   scoringVersion?: string | null;
   authorizationNote?: string | null;
+  inDiscovery?: boolean;
 };
 
 export type CompanyTarget = {

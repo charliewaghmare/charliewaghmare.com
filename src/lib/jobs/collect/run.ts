@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { fetchBoard, SourceFailure } from "@/lib/jobs/collect/fetch-source";
 import { persistCollection, type RunSummary, type SourceResult } from "@/lib/jobs/collect/persist";
+import { assessPosting } from "@/lib/jobs/collect/rules";
 import { shouldRunScheduled } from "@/lib/jobs/collect/schedule";
 import { activeBoards, watchlist, type WatchCompany } from "@/lib/jobs/collect/watchlist";
 
@@ -37,20 +38,28 @@ export async function collectJobs(options: {
     }
   }
   if (options.dryRun) {
-    const eligible = results.reduce((sum, result) => sum + result.postings.length, 0);
-    console.log(`Dry run. Boards ${boards.length}. Postings fetched ${eligible}. Nothing was saved.`);
-    return {
-      sourcesChecked: results.length,
-      sourcesSucceeded: results.filter((result) => result.ok).length,
-      sourcesFailed: results.filter((result) => result.error).length,
-      fetched: eligible,
-      excluded: 0,
-      inserted: 0,
-      updated: 0,
-      stale: 0,
-      closed: 0,
-      errors: results.flatMap((result) => (result.error ? [result.error] : [])),
-    };
+    const summary = emptySummary(results);
+    for (const result of results) {
+      for (const posting of result.postings) {
+        const assessment = assessPosting(posting, options.now);
+        if (assessment.publish) {
+          summary.eligibleStudent += 1;
+          if (assessment.score >= 50) summary.relevant += 1;
+          else summary.belowThreshold += 1;
+          if (summary.examples.length < 12) {
+            summary.examples.push(
+              `${posting.companyName}: ${posting.title} (${assessment.tags.join(", ") || "uncategorized"}) ${assessment.score}`,
+            );
+          }
+        } else {
+          summary.excluded += 1;
+          if (assessment.status === "uncertain") summary.uncertain += 1;
+          else if (assessment.status === "ineligible_professional_role") summary.ineligibleProfessional += 1;
+        }
+      }
+    }
+    console.log(`Dry run. Nothing was saved. ${JSON.stringify(summary)}`);
+    return summary;
   }
 
   const db = collectorClient();
@@ -115,4 +124,29 @@ async function ensureRun(db: SupabaseClient, runId: string | null): Promise<stri
 
 export function collectionBoards(): WatchCompany[] {
   return activeBoards();
+}
+
+function emptySummary(results: SourceResult[]): RunSummary {
+  return {
+    sourcesChecked: results.length,
+    sourcesSucceeded: results.filter((result) => result.ok).length,
+    sourcesFailed: results.filter((result) => result.error).length,
+    fetched: results.reduce((sum, result) => sum + result.postings.length, 0),
+    excluded: 0,
+    eligibleStudent: 0,
+    ineligibleProfessional: 0,
+    uncertain: 0,
+    relevant: 0,
+    belowThreshold: 0,
+    inserted: 0,
+    updated: 0,
+    stale: 0,
+    closed: 0,
+    reviewed: 0,
+    retained: 0,
+    storedExcluded: 0,
+    storedQuarantined: 0,
+    examples: [],
+    errors: results.flatMap((result) => (result.error ? [result.error] : [])),
+  };
 }

@@ -49,7 +49,13 @@ export function inferCountry(location: string | null): string | null {
   ) {
     return "Canada";
   }
-  if (/\b(united states|u\.s\.a\.|usa)\b/.test(value) || /,\s*[a-z]{2}$/i.test(location.trim())) {
+  if (/,\s*(ab|bc|mb|nb|nl|ns|nt|nu|on|pe|qc|sk|yt)\b/.test(value)) return "Canada";
+  if (
+    /\b(united states|u\.s\.a\.|usa)\b/.test(value) ||
+    /,\s*(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|va|vt|wa|wi|wv|wy|dc)\b/.test(
+      value,
+    )
+  ) {
     return "United States";
   }
   if (/\b(united kingdom|uk|london|england)\b/.test(value)) return "United Kingdom";

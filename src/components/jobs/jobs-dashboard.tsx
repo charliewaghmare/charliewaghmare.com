@@ -29,25 +29,29 @@ export function JobsDashboard({
   const [preferences, setPreferences] = useState<SearchPreferences | null>(model.preferences);
   const [searchPrompt, setSearchPrompt] = useState("");
 
+  const discoveryJobs = useMemo(
+    () => model.jobs.filter((job) => job.inDiscovery !== false),
+    [model.jobs],
+  );
   const visibleJobs = useMemo(() => {
     const scoped =
       view === "saved"
         ? model.jobs.filter((job) => job.saved)
         : view === "applied"
           ? model.jobs.filter((job) => job.applied)
-          : model.jobs;
+          : discoveryJobs;
     return filterJobs(scoped, filters);
-  }, [filters, model.jobs, view]);
+  }, [discoveryJobs, filters, model.jobs, view]);
 
-  const tags = uniqueSorted(model.jobs.flatMap((job) => job.tags));
-  const locations = uniqueSorted(model.jobs.map((job) => job.location));
-  const terms = uniqueSorted(model.jobs.map((job) => job.workTerm));
-  const activeCount = model.jobs.length;
-  const strongCount = model.jobs.filter((job) => job.matchScore >= 75).length;
+  const tags = uniqueSorted(discoveryJobs.flatMap((job) => job.tags));
+  const locations = uniqueSorted(discoveryJobs.map((job) => job.location));
+  const terms = uniqueSorted(discoveryJobs.map((job) => job.workTerm));
+  const activeCount = discoveryJobs.length;
+  const strongCount = discoveryJobs.filter((job) => job.matchScore >= 75).length;
   const recentCutoff = new Date();
   recentCutoff.setUTCDate(recentCutoff.getUTCDate() - 7);
   const recentIso = recentCutoff.toISOString().slice(0, 10);
-  const newCount = model.jobs.filter((job) => job.discoveredOn >= recentIso).length;
+  const newCount = discoveryJobs.filter((job) => job.discoveredOn >= recentIso).length;
 
   async function callApi(
     path: string,
