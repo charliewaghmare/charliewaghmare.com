@@ -327,7 +327,11 @@ function MetricModal({
         <div className="mt-6">
           {metric.kind === "numeric" ? (
             numeric.length > 0 ? (
-              <MetricHistoryChart points={numeric} unit={metric.unit} />
+              <MetricHistoryChart
+                points={numeric}
+                unit={metric.unit}
+                label={`${metric.label} trend`}
+              />
             ) : (
               <p className="td-muted text-sm leading-6">
                 {metric.historyNote ??

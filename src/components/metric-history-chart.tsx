@@ -7,9 +7,11 @@ import { formatDay } from "@/lib/garmin/format";
 export function MetricHistoryChart({
   points,
   unit,
+  label = "Historical metric chart",
 }: {
   points: HistoryPoint[];
   unit?: string;
+  label?: string;
 }) {
   const [active, setActive] = useState<string | null>(null);
   const width = 640;
@@ -75,7 +77,7 @@ export function MetricHistoryChart({
         viewBox={`0 0 ${width} ${height}`}
         className="h-64 w-full"
         role="img"
-        aria-label="Historical metric chart"
+        aria-label={label}
         onPointerLeave={() => setActive(null)}
       >
         {yTicks.map((tick) => {
@@ -112,7 +114,7 @@ export function MetricHistoryChart({
             onPointerDown={() => setActive(coord.point.iso)}
             tabIndex={0}
             role="button"
-            aria-label={`${formatDay(coord.point.iso)}: ${formatTick(coord.point.value, unit)}`}
+            aria-label={`${formatDay(coord.point.iso)}: ${formatReading(coord.point.value, unit)}`}
             onFocus={() => setActive(coord.point.iso)}
           />
         ))}
@@ -142,10 +144,11 @@ export function MetricHistoryChart({
       {activeCoord ? (
         <p className="td-history-tooltip type-figure">
           {formatDay(activeCoord.point.iso)} ·{" "}
-          {formatTick(activeCoord.point.value, unit)}
+          {formatReading(activeCoord.point.value, unit)}
         </p>
       ) : (
         <p className="td-muted text-[0.8125rem]">
+          {unit ? `${unit}. ` : ""}
           Hover a point for the exact reading.
         </p>
       )}
@@ -184,5 +187,10 @@ function formatTick(value: number, unit?: string): string {
     Math.abs(value) >= 100
       ? String(Math.round(value))
       : value.toFixed(1).replace(/\.0$/, "");
+  return unit && unit.length <= 5 ? `${rounded} ${unit}` : rounded;
+}
+
+function formatReading(value: number, unit?: string): string {
+  const rounded = formatTick(value);
   return unit ? `${rounded} ${unit}` : rounded;
 }
