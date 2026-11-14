@@ -274,6 +274,27 @@ code.text-code {
   min-height: 1.75rem;
 }
 
+.training-theme .td-run-sparkline {
+  display: block;
+  width: 100%;
+  height: 4.5rem;
+  margin-top: 0.75rem;
+  color: #50b8ff;
+}
+
+.training-theme .td-run-card {
+  border-radius: 0.5rem;
+  outline: none;
+}
+
+.training-theme .td-run-card:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--td-accent) 55%, transparent);
+}
+
+.training-theme .td-history-area {
+  fill: color-mix(in srgb, var(--td-accent) 16%, transparent);
+}
+
 .training-theme .td-modal-root {
   position: fixed;
   inset: 0;

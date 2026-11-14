@@ -35,7 +35,7 @@ The Projects section stays off the page while `projects` is an empty list. Add a
 
 ## Garmin
 
-The homepage has the most recent activity in the top right on a wide screen, and under the name on a phone. It shows distance, time, average pace, average heart rate, and the GPS path with no map behind it. [charliewaghmare.com/training](https://charliewaghmare.com/training) shows the last 30 days of runs, plus training load, load balance, VO2 max, resting heart rate, HRV, readiness, and sleep. Metric cards open historical charts (7 / 30 / 90 days / 1 year) from real Garmin readings when history exists.
+The homepage has the most recent activity in the top right on a wide screen, and under the name on a phone. It shows distance, time, average pace, average heart rate, and the GPS path with no map behind it. [charliewaghmare.com/training](https://charliewaghmare.com/training) shows the last 30 days of runs, plus training load, load balance, VO2 max, resting heart rate, HRV, readiness, and sleep. Metric cards open historical charts (7 / 30 / 90 days / 1 year) from real Garmin readings when history exists. The latest run opens the same kind of overlay: distance, pace, duration, and heart rate first, then heart-rate, pace, and elevation traces, splits, and the GPS line only when that activity actually includes them.
 
 Personal bests are not taken from Garmin. Edit `src/content/personal-bests.ts` when you run a new one, then push.
 

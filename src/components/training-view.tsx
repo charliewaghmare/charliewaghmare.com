@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { DistanceChart } from "@/components/distance-chart";
+import { LatestRunPanel } from "@/components/latest-run-panel";
 import { MetricExplorer } from "@/components/metric-explorer";
 import type { PersonalBest } from "@/content/personal-bests";
 import { site } from "@/content/site";
 import { formatDay } from "@/lib/garmin/format";
-import type { ActivityRow, TrainingSnapshot } from "@/lib/garmin/snapshot";
+import type { TrainingSnapshot } from "@/lib/garmin/snapshot";
 
 const PRIMARY_IDS = ["status", "load", "vo2", "hrv", "readiness"];
 const SECONDARY_IDS = ["balance", "rhr", "sleep"];
@@ -17,7 +18,7 @@ export function TrainingView({
   bests: PersonalBest[];
 }) {
   const maxKm = Math.max(...snapshot.days.map((day) => day.km), 0);
-  const latestRun = snapshot.activities[0] ?? null;
+  const latestRun = snapshot.latestActivity;
   const dashboardMetrics =
     snapshot.dashboardMetrics.length > 0
       ? snapshot.dashboardMetrics
@@ -197,74 +198,6 @@ export function TrainingView({
   );
 }
 
-function LatestRunPanel({ activity }: { activity: ActivityRow | null }) {
-  return (
-    <article className="td-card flex min-h-[20rem] flex-col p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="td-overline tracking-[0.12em]">Latest run</p>
-          {activity ? (
-            <>
-              <h3 className="type-display td-text mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
-                {activity.name}
-              </h3>
-              <p className="td-muted mt-2 text-[0.8125rem] font-medium leading-5">
-                {activity.dateLabel}
-              </p>
-            </>
-          ) : (
-            <h3 className="type-display td-text mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
-              No recent run
-            </h3>
-          )}
-        </div>
-        {activity?.href ? (
-          <a
-            href={activity.href}
-            target="_blank"
-            rel="noreferrer"
-            className="td-link text-[0.8125rem] font-medium underline"
-          >
-            View on Garmin ↗
-          </a>
-        ) : null}
-      </div>
-
-      {activity ? (
-        <>
-          <div className="mt-8 grid grid-cols-2 gap-6">
-            <div>
-              <p className="td-label text-[0.75rem] font-medium">Distance</p>
-              <p className="type-metric mt-1 text-[2rem] leading-none sm:text-[2.25rem]">
-                <WithUnits text={activity.distanceLabel} />
-              </p>
-            </div>
-            <div>
-              <p className="td-label text-[0.75rem] font-medium">Avg pace</p>
-              <p className="type-metric mt-1 text-[2rem] leading-none sm:text-[2.25rem]">
-                <WithUnits text={activity.paceLabel ?? "—"} />
-              </p>
-            </div>
-          </div>
-          <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <FeaturedStat label="Duration" value={activity.timeLabel} />
-            <FeaturedStat label="Avg HR" value={activity.heartRateLabel} />
-            <FeaturedStat label="Type" value={activity.typeLabel} />
-          </dl>
-          <div
-            className="td-divider mt-auto min-h-20 border-t border-dashed pt-4"
-            aria-hidden="true"
-          />
-        </>
-      ) : (
-        <p className="td-muted mt-8 text-sm font-normal leading-6">
-          No runs in this window.
-        </p>
-      )}
-    </article>
-  );
-}
-
 function TrainingOverviewPanel({
   totalsLabel,
   days,
@@ -287,17 +220,6 @@ function TrainingOverviewPanel({
         <DistanceChart days={days} maxKm={maxKm} />
       </div>
     </article>
-  );
-}
-
-function FeaturedStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="td-label text-[0.75rem] font-medium">{label}</dt>
-      <dd className="type-figure td-text mt-1 text-sm">
-        <WithUnits text={value} unitClassName="type-unit-inline" />
-      </dd>
-    </div>
   );
 }
 

@@ -31,6 +31,17 @@ export function formatRange(start: string, end: string): string {
   return `${formatDay(start, !sameYear)} – ${formatDay(end)}`;
 }
 
+export function formatLocalClock(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = value.match(/(?:T|\s)(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  if (hour > 23) return null;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${match[2]} ${suffix}`;
+}
+
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
   const hours = Math.floor(total / 3600);
