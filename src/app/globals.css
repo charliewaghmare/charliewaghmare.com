@@ -75,6 +75,8 @@ code.text-code {
   --td-surface: #18232e;
   --td-elevated: #24323d;
   --td-accent: #50b8ff;
+  --td-chart-highlight: #8bd7ff;
+  --td-guide: #a8b3be;
   --td-accent-hover: #79caff;
   --td-text: #f0f4f8;
   --td-muted: #98a7b7;
@@ -199,6 +201,7 @@ code.text-code {
   align-items: center;
   justify-content: center;
   transform: translateX(-50%);
+  white-space: nowrap;
   border: 1px solid var(--td-border);
   border-radius: 0.375rem;
   background: var(--td-elevated);
@@ -222,7 +225,7 @@ code.text-code {
   z-index: 2;
   width: 0;
   transform: translateX(-50%);
-  border-left: 1px dashed color-mix(in srgb, #a8b3be 65%, transparent);
+  border-left: 1px dashed color-mix(in srgb, var(--td-guide) 65%, transparent);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -303,7 +306,7 @@ code.text-code {
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  background: color-mix(in srgb, #0d1117 72%, transparent);
+  background: color-mix(in srgb, var(--td-bg) 72%, transparent);
   animation: td-modal-fade 200ms ease;
 }
 
@@ -582,4 +585,13 @@ code.text-code {
   .jobs-theme .jd-expand {
     transition: none;
   }
+}
+
+.training-theme .td-chart:focus-visible,
+.training-theme .td-history-point:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .training-theme .animate-pulse { animation: none; }
 }

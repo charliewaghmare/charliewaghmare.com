@@ -1,3 +1,4 @@
+import { vancouverToday } from "./format";
 export type HistoryPoint = {
   iso: string;
   value: number;
@@ -74,7 +75,7 @@ function findText(root: unknown, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function isoFrom(row: unknown): string | null {
+export function isoFrom(row: unknown): string | null {
   const record = asRecord(row);
   if (!record) return null;
   for (const key of [
@@ -87,10 +88,13 @@ function isoFrom(row: unknown): string | null {
   ]) {
     const raw = record[key];
     if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
-      return raw.slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      const date = new Date(raw);
+      if (Number.isFinite(date.getTime())) return vancouverToday(date);
     }
     if (typeof raw === "number" && Number.isFinite(raw)) {
-      return new Date(raw).toISOString().slice(0, 10);
+      const date = new Date(raw);
+      if (Number.isFinite(date.getTime())) return vancouverToday(date);
     }
   }
   return null;
@@ -160,7 +164,7 @@ export function readinessSeries(payload: unknown): HistoryPoint[] {
     const iso = isoFrom(row);
     const value =
       findNumber(row, "trainingReadinessScore") ?? findNumber(row, "score");
-    if (!iso || value === null) continue;
+    if (!iso || value === null || value < 0 || value > 100) continue;
     points.push({ iso, value });
   }
   return uniquePoints(points);
@@ -177,9 +181,8 @@ export function sleepScoreSeries(payloads: unknown[]): HistoryPoint[] {
       const iso = isoFrom(row);
       const value =
         findNumber(row, "sleepScore") ??
-        findNumber(row, "overallScore") ??
-        findNumber(row, "value");
-      if (!iso || value === null || value <= 0 || value > 100) continue;
+        findNumber(row, "overallScore");
+      if (!iso || value === null || value < 0 || value > 100) continue;
       points.push({ iso, value });
     }
   }
@@ -439,3 +442,13 @@ function shiftIso(iso: string, days: number): string {
 }
 
 export { round, titlePhrase };
+
+/** Time-proportional chart geometry; observations are never interpolated. */
+export function historyPosition(points: HistoryPoint[], iso: string): number {
+  const first = Date.parse(points[0]?.iso ?? "");
+  const last = Date.parse(points.at(-1)?.iso ?? "");
+  return last > first ? (Date.parse(iso) - first) / (last - first) : 0.5;
+}
+export function historyGap(a: string, b: string): boolean {
+  return Date.parse(b) - Date.parse(a) > 1.5 * 86_400_000;
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CategoryPoint, HistoryPoint } from "@/lib/garmin/series";
+import { historyPosition, historyGap, type CategoryPoint, type HistoryPoint } from "@/lib/garmin/series";
 import { formatDay } from "@/lib/garmin/format";
 
 export function MetricHistoryChart({
@@ -11,7 +11,7 @@ export function MetricHistoryChart({
   points: HistoryPoint[];
   unit?: string;
 }) {
-  const [active, setActive] = useState<number | null>(null);
+  const [active, setActive] = useState<string | null>(null);
   const width = 640;
   const height = 260;
   const padTop = 16;
@@ -27,11 +27,11 @@ export function MetricHistoryChart({
     const padValue = (maxValue - minValue) * 0.08 || 1;
     const lo = minValue - padValue;
     const hi = maxValue + padValue;
-    const mapped = points.map((point, index) => {
+    const mapped = points.map((point) => {
       const x =
         points.length === 1
           ? padLeft + innerW / 2
-          : padLeft + (index / (points.length - 1)) * innerW;
+          : padLeft + historyPosition(points, point.iso) * innerW;
       const y = padTop + (1 - (point.value - lo) / (hi - lo)) * innerH;
       return { x, y, point };
     });
@@ -43,8 +43,7 @@ export function MetricHistoryChart({
         return;
       }
       const previous = points[index - 1];
-      const gapDays = dayGap(previous.iso, coord.point.iso);
-      if (gapDays > 1.5) {
+      if (historyGap(previous.iso, coord.point.iso)) {
         segments.push(`M${coord.x} ${coord.y}`);
       } else {
         segments.push(`L${coord.x} ${coord.y}`);
@@ -68,7 +67,7 @@ export function MetricHistoryChart({
   }
 
   const yTicks = [min, (min + max) / 2, max];
-  const activeCoord = active !== null ? coords[active] : null;
+  const activeCoord = coords.find((coord) => coord.point.iso === active);
 
   return (
     <div className="td-history-chart">
@@ -102,25 +101,30 @@ export function MetricHistoryChart({
           );
         })}
         <path d={path} className="td-history-line" fill="none" />
-        {coords.map((coord, index) => (
+        {coords.map((coord) => (
           <circle
             key={coord.point.iso}
             cx={coord.x}
             cy={coord.y}
-            r={active === index ? 4 : 2.5}
+            r={active === coord.point.iso ? 4 : 2.5}
             className="td-history-point"
-            onPointerEnter={() => setActive(index)}
+            onPointerEnter={() => setActive(coord.point.iso)}
+            onPointerDown={() => setActive(coord.point.iso)}
+            tabIndex={0}
+            role="button"
+            aria-label={`${formatDay(coord.point.iso)}: ${formatTick(coord.point.value, unit)}`}
+            onFocus={() => setActive(coord.point.iso)}
           />
         ))}
         {coords.map((coord, index) => (
           <rect
             key={`hit-${coord.point.iso}`}
-            x={coord.x - Math.max(innerW / points.length, 8) / 2}
+            x={index === 0 ? padLeft : (coords[index - 1].x + coord.x) / 2}
             y={padTop}
-            width={Math.max(innerW / points.length, 8)}
+            width={(index === coords.length - 1 ? width - padRight : (coord.x + coords[index + 1].x) / 2) - (index === 0 ? padLeft : (coords[index - 1].x + coord.x) / 2)}
             height={innerH}
             fill="transparent"
-            onPointerEnter={() => setActive(index)}
+            onPointerEnter={() => setActive(coord.point.iso)}
           />
         ))}
         <text x={padLeft} y={height - 12} className="td-history-axis">
@@ -181,11 +185,4 @@ function formatTick(value: number, unit?: string): string {
       ? String(Math.round(value))
       : value.toFixed(1).replace(/\.0$/, "");
   return unit ? `${rounded} ${unit}` : rounded;
-}
-
-function dayGap(a: string, b: string): number {
-  const start = Date.parse(`${a}T12:00:00Z`);
-  const end = Date.parse(`${b}T12:00:00Z`);
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return 1;
-  return Math.abs(end - start) / 86400000;
 }

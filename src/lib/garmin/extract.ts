@@ -1,3 +1,5 @@
+import { restingHrSeries, readinessSeries, sleepScoreSeries, isoFrom, filterSeries } from "./series";
+import { addDays, vancouverToday } from "./format";
 export type Metric = {
   label: string;
   value: string;
@@ -72,21 +74,19 @@ export function displayNameFrom(profile: unknown): string | null {
   return name;
 }
 
-export function latestRestingHr(payload: unknown): { latest: number; average: number | null } | null {
-  const series = findByKey(payload, "WELLNESS_RESTING_HEART_RATE");
-  if (!Array.isArray(series)) return null;
-  const values = series
-    .map((row) => asNumber(asRecord(row)?.value))
-    .filter((value): value is number => value !== null && value > 0);
-  if (values.length === 0) return null;
-  const latest = values[values.length - 1];
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
-  return { latest, average };
+export function latestRestingHr(payload: unknown, end = vancouverToday()): { latest: number; average: number | null } | null {
+  const points = restingHrSeries(payload).filter((point) => point.iso <= end);
+  if (points.length === 0) return null;
+  const recent = filterSeries(points, addDays(end, -29), end);
+  return { latest: points[points.length - 1].value,
+    average: recent.length ? recent.reduce((sum, point) => sum + point.value, 0) / recent.length : null };
 }
 
 export function latestHrv(payload: unknown): { night: number | null; weekly: number | null } {
   const summaries = findByKey(payload, "hrvSummaries");
-  const source = Array.isArray(summaries) ? summaries[summaries.length - 1] : payload;
+  const source = Array.isArray(summaries)
+    ? [...summaries].filter((row) => isoFrom(row)).sort((a, b) => isoFrom(a)!.localeCompare(isoFrom(b)!)).at(-1)
+    : payload;
   return {
     night: findNumber(source, "lastNightAvg") ?? findNumber(source, "lastNight"),
     weekly: findNumber(source, "weeklyAvg"),
@@ -119,8 +119,7 @@ export function trainingLoads(payload: unknown): {
   return {
     acute:
       findNumber(payload, "dailyTrainingLoadAcute") ??
-      findNumber(payload, "acuteTrainingLoad") ??
-      findNumber(payload, "weeklyTrainingLoad"),
+      findNumber(payload, "acuteTrainingLoad"),
     chronic:
       findNumber(payload, "dailyTrainingLoadChronic") ??
       findNumber(payload, "chronicTrainingLoad"),
@@ -147,31 +146,13 @@ export function loadBalance(payload: unknown): {
 }
 
 export function latestReadiness(payload: unknown): number | null {
-  const rows = Array.isArray(payload) ? payload : [];
-  for (let i = rows.length - 1; i >= 0; i -= 1) {
-    const score =
-      findNumber(rows[i], "trainingReadinessScore") ?? findNumber(rows[i], "score");
-    if (score !== null) return score;
-  }
-  return findNumber(payload, "trainingReadinessScore") ?? findNumber(payload, "score");
+  if (Array.isArray(payload)) return readinessSeries(payload).at(-1)?.value ?? null;
+  const value = findNumber(payload, "trainingReadinessScore") ?? findNumber(payload, "score");
+  return value !== null && value >= 0 && value <= 100 ? value : null;
 }
 
 export function latestSleepScore(payloads: unknown[]): number | null {
-  let latest: number | null = null;
-  for (const payload of payloads) {
-    const rows = Array.isArray(payload)
-      ? payload
-      : (asRecord(payload)?.individualStats as unknown[] | undefined);
-    const list = Array.isArray(rows) ? rows : [payload];
-    for (const row of list) {
-      const score =
-        findNumber(row, "sleepScore") ??
-        findNumber(row, "overallScore") ??
-        findNumber(row, "value");
-      if (score !== null && score > 0 && score <= 100) latest = score;
-    }
-  }
-  return latest;
+  return sleepScoreSeries(payloads).at(-1)?.value ?? null;
 }
 
 function balanceDetail(low: number | null, high: number | null, anaerobic: number | null): string | undefined {
@@ -192,11 +173,12 @@ export function buildMetrics(input: {
   balance: unknown;
   readiness: unknown;
   sleep: unknown[];
+  end?: string;
 }): Metric[] {
   const statusText = trainingStatus(input.status) ?? trainingStatus(input.dailyStatus);
   const loads = trainingLoads(input.dailyStatus);
   const balance = loadBalance(input.balance);
-  const resting = latestRestingHr(input.rhr);
+  const resting = latestRestingHr(input.rhr, input.end);
   const hrv = latestHrv(input.hrv);
   const vo2 = vo2Max(input.vo2);
   const readiness = latestReadiness(input.readiness);

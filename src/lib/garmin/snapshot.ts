@@ -1,3 +1,6 @@
+import { deriveKilometerSplits, downsampleSamples, samplesFromDetails, splitsFromPayload, type ActivitySample, type ActivitySplit } from "@/lib/garmin/activity-detail";
+import { formatDuration, formatLocalClock } from "@/lib/garmin/format";
+import { activityWindow, dayBars, toRow, toRunCard, totalsLabel, type Activity } from "@/lib/garmin/activities";
 import { cacheLife } from "next/cache";
 import {
   GarminAuthError,
@@ -11,23 +14,9 @@ import {
 } from "@/lib/garmin/extract";
 import {
   addDays,
-  formatDay,
-  formatDistance,
-  formatDuration,
-  formatLocalClock,
-  formatPace,
   formatRange,
-  phrase,
   vancouverToday,
 } from "@/lib/garmin/format";
-import {
-  deriveKilometerSplits,
-  downsampleSamples,
-  samplesFromDetails,
-  splitsFromPayload,
-  type ActivitySample,
-  type ActivitySplit,
-} from "@/lib/garmin/activity-detail";
 import { pointsFromPayloads, type Point } from "@/lib/garmin/polyline";
 import {
   buildDashboardMetrics,
@@ -100,28 +89,9 @@ export type TrainingSnapshot = {
   activities: ActivityRow[];
 };
 
-type Activity = {
-  id: string;
-  name: string;
-  typeKey: string;
-  date: string;
-  distanceMeters: number;
-  durationSeconds: number;
-  averageHr: number | null;
-  maxHr: number | null;
-  averageSpeed: number | null;
-  movingSeconds: number | null;
-  elevationGain: number | null;
-  cadence: number | null;
-  power: number | null;
-  calories: number | null;
-  startLocal: string | null;
-  run: boolean;
-};
-
 export async function getTrainingSnapshot(): Promise<TrainingSnapshot> {
   "use cache";
-  cacheLife({ stale: 60, revalidate: 60, expire: 3600 });
+  cacheLife({ stale: 60, revalidate: 60, expire: 300 });
   return loadTrainingSnapshot();
 }
 
@@ -153,34 +123,17 @@ async function loadTrainingSnapshot(): Promise<TrainingSnapshot> {
 
 async function liveSnapshot(start: string, end: string): Promise<TrainingSnapshot> {
   const [activitiesPayload, profile] = await Promise.all([
-    garminGet("/activitylist-service/activities/search/activities", {
-      start: 0,
-      limit: 100,
-    }),
+    activityWindow(start, (offset) => garminGet("/activitylist-service/activities/search/activities", { start: offset, limit: 100 })),
     optional("/userprofile-service/socialProfile"),
   ]);
 
-  const parsed = parseActivities(activitiesPayload);
+  const parsed = activitiesPayload.activities;
   const activities = parsed.filter(
     (activity) => activity.date >= start && activity.date <= end,
   );
-  const latest = parsed[0] ?? null;
-  const latestRunActivity = activities.find((activity) => activity.run) ?? null;
-  const sameActivity = latestRunActivity?.id === latest?.id;
-  const headlineTrace = latest
-    ? await activityTrace(latest.id, latest.distanceMeters, {
-        samples: sameActivity,
-        splits: sameActivity,
-      })
-    : emptyTrace();
-  const runTrace =
-    latestRunActivity && !sameActivity
-      ? await activityTrace(latestRunActivity.id, latestRunActivity.distanceMeters, {
-          samples: true,
-          splits: true,
-        })
-      : headlineTrace;
-  const points = headlineTrace.points;
+  const latest = parsed.find((activity) => activity.run && activity.date <= end) ?? null;
+  const trace = latest ? await activityTrace(latest.id, latest.distanceMeters) : emptyTrace();
+  const points = trace.points;
   const displayName = displayNameFrom(profile);
   const encodedName = displayName ? encodeURIComponent(displayName) : null;
 
@@ -220,7 +173,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     optional(`/sleep-service/stats/sleep/daily/${start}/${addDays(start, 27)}`),
     optional(`/sleep-service/stats/sleep/daily/${sleepStart}/${end}`),
     optional(`/sleep-service/stats/sleep/daily/${historyStart}/${sleepHistoryMid}`),
-    optional(`/sleep-service/stats/sleep/daily/${sleepHistoryMid}/${end}`),
+    optional(`/sleep-service/stats/sleep/daily/${addDays(sleepHistoryMid, 1)}/${end}`),
   ]);
 
   const metrics = buildMetrics({
@@ -232,6 +185,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     balance,
     readiness,
     sleep: [sleepA, sleepB],
+    end,
   });
 
   // Load and status history share Garmin's training-status daily payload when present.
@@ -255,10 +209,10 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
 
   return {
     source: "garmin",
-    note: null,
+    note: activitiesPayload.limited ? "Activity history reached the retrieval limit; totals may be incomplete." : null,
     rangeLabel: formatRange(start, end),
     latestRun: latest ? toRunCard(latest, points) : null,
-    latestActivity: latestRunActivity ? toLatestActivity(latestRunActivity, runTrace) : null,
+    latestActivity: latest ? toLatestActivity(latest, trace) : null,
     totalsLabel: totalsLabel(activities),
     metrics,
     dashboardMetrics,
@@ -279,120 +233,21 @@ async function optional(
   }
 }
 
-type ActivityTrace = {
-  points: Point[];
-  samples: ActivitySample[];
-  splits: ActivitySplit[];
-};
-
-function emptyTrace(): ActivityTrace {
-  return { points: [], samples: [], splits: [] };
-}
-
-async function activityTrace(
-  activityId: string,
-  distanceMeters: number,
-  options: { samples: boolean; splits: boolean },
-): Promise<ActivityTrace> {
+type ActivityTrace = { points: Point[]; samples: ActivitySample[]; splits: ActivitySplit[] };
+function emptyTrace(): ActivityTrace { return { points: [], samples: [], splits: [] }; }
+async function activityTrace(activityId: string, distanceMeters: number | null): Promise<ActivityTrace> {
   if (!/^\d+$/.test(activityId)) return emptyTrace();
   const id = encodeURIComponent(activityId);
-  const [details, map, polyline, splits] = await Promise.all([
-    optional(`/activity-service/activity/${id}/details`, {
-      maxChartSize: options.samples ? 2000 : 1,
-      maxPolylineSize: 8000,
-    }),
-    optional(`/activity-service/activity/${id}/mapdetails`, {
-      maxPolylineSize: 8000,
-      maxHeatMapSize: 0,
-    }),
-    optional(`/activity-service/activity/polyline/${id}`),
-    options.splits ? optional(`/activity-service/activity/${id}/splits`) : Promise.resolve(null),
+  const [details, splits] = await Promise.all([
+    optional(`/activity-service/activity/${id}/details`, { maxChartSize: 2000, maxPolylineSize: 1600 }),
+    optional(`/activity-service/activity/${id}/splits`),
   ]);
-  const samples = samplesFromDetails(details, distanceMeters);
+  let points = pointsFromPayloads([details]);
+  if (points.length < 2) points = pointsFromPayloads([await optional(`/activity-service/activity/${id}/mapdetails`, { maxPolylineSize: 1600, maxHeatMapSize: 0 })]);
+  if (points.length < 2) points = pointsFromPayloads([await optional(`/activity-service/activity/polyline/${id}`)]);
+  const samples = samplesFromDetails(details, distanceMeters ?? 0);
   const recordedSplits = splitsFromPayload(splits);
-  return {
-    points: pointsFromPayloads([details, map, polyline]),
-    samples: downsampleSamples(samples),
-    splits: recordedSplits.length > 0 ? recordedSplits : deriveKilometerSplits(samples),
-  };
-}
-
-function parseActivities(payload: unknown): Activity[] {
-  const list = Array.isArray(payload)
-    ? payload
-    : asRecord(payload)?.activities;
-  if (!Array.isArray(list)) return [];
-
-  const activities: Activity[] = [];
-  for (const item of list) {
-    const record = asRecord(item);
-    if (!record) continue;
-    const id = record.activityId;
-    if (typeof id !== "number" && typeof id !== "string") continue;
-    const typeKey = activityTypeKey(record);
-    const date = activityDate(record);
-    if (!date) continue;
-    activities.push({
-      id: String(id),
-      name: stringValue(record.activityName) ?? phrase(typeKey || "Activity"),
-      typeKey,
-      date,
-      distanceMeters: numberValue(record.distance) ?? 0,
-      durationSeconds: numberValue(record.duration) ?? 0,
-      averageHr: positive(numberValue(record.averageHR)),
-      maxHr: positive(numberValue(record.maxHR)),
-      averageSpeed: positive(numberValue(record.averageSpeed)),
-      movingSeconds: positive(numberValue(record.movingDuration)),
-      elevationGain: positive(numberValue(record.elevationGain)),
-      cadence: positive(numberValue(record.averageRunningCadenceInStepsPerMinute)),
-      power: positive(numberValue(record.avgPower)),
-      calories: positive(numberValue(record.calories)),
-      startLocal: stringValue(record.startTimeLocal),
-      run: /run/i.test(typeKey),
-    });
-  }
-  return activities;
-}
-
-function activityTypeKey(record: Record<string, unknown>): string {
-  const type = asRecord(record.activityType);
-  return stringValue(type?.typeKey) ?? "";
-}
-
-function activityDate(record: Record<string, unknown>): string | null {
-  const local = stringValue(record.startTimeLocal);
-  if (local && /^\d{4}-\d{2}-\d{2}/.test(local)) return local.slice(0, 10);
-  const gmt = stringValue(record.startTimeGMT);
-  if (!gmt) return null;
-  const normalized = gmt.endsWith("Z") ? gmt : `${gmt.replace(" ", "T")}Z`;
-  const ms = Date.parse(normalized);
-  if (Number.isNaN(ms)) return null;
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Vancouver",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(ms));
-}
-
-function paceLabelFor(activity: Activity): string {
-  if (activity.averageSpeed && activity.averageSpeed > 0.4) {
-    return formatPace(1000, 1000 / activity.averageSpeed) ?? "—";
-  }
-  const seconds = activity.movingSeconds ?? activity.durationSeconds;
-  return formatPace(activity.distanceMeters, seconds) ?? "—";
-}
-
-function toRunCard(activity: Activity, points: Point[]): RunCard {
-  return {
-    name: activity.name,
-    dateLabel: formatDay(activity.date, false),
-    distanceLabel: formatDistance(activity.distanceMeters),
-    timeLabel: formatDuration(activity.durationSeconds),
-    heartRateLabel: activity.averageHr ? `${Math.round(activity.averageHr)}` : "—",
-    paceLabel: paceLabelFor(activity),
-    points,
-  };
+  return { points, samples: downsampleSamples(samples), splits: recordedSplits.length ? recordedSplits : deriveKilometerSplits(samples) };
 }
 
 function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActivity {
@@ -400,7 +255,7 @@ function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActiv
   const heartCount = trace.samples.filter((sample) => sample.heartRate !== null).length;
   const paceCount = trace.samples.filter((sample) => sample.paceSecondsPerKm !== null).length;
   const moving =
-    activity.movingSeconds && Math.abs(activity.movingSeconds - activity.durationSeconds) > 15
+    activity.movingSeconds && activity.durationSeconds !== null && Math.abs(activity.movingSeconds - activity.durationSeconds) > 15
       ? activity.movingSeconds
       : null;
   const clock = formatLocalClock(activity.startLocal);
@@ -422,49 +277,6 @@ function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActiv
   };
 }
 
-function toRow(activity: Activity): ActivityRow {
-  return {
-    id: activity.id,
-    name: activity.name,
-    typeLabel: activity.typeKey ? phrase(activity.typeKey) : "Activity",
-    dateLabel: formatDay(activity.date),
-    distanceLabel:
-      activity.distanceMeters > 0 ? formatDistance(activity.distanceMeters) : "—",
-    timeLabel:
-      activity.durationSeconds > 0 ? formatDuration(activity.durationSeconds) : "—",
-    heartRateLabel: activity.averageHr ? `${Math.round(activity.averageHr)} bpm` : "—",
-    paceLabel: formatPace(activity.distanceMeters, activity.durationSeconds),
-    href: /^\d+$/.test(activity.id)
-      ? `https://connect.garmin.com/modern/activity/${activity.id}`
-      : null,
-    run: activity.run,
-  };
-}
-
-function totalsLabel(activities: Activity[]): string {
-  const runs = activities.filter((activity) => activity.run);
-  const distance = runs.reduce((sum, activity) => sum + activity.distanceMeters, 0);
-  const time = runs.reduce((sum, activity) => sum + activity.durationSeconds, 0);
-  const runWord = runs.length === 1 ? "run" : "runs";
-  return `${runs.length} ${runWord} · ${formatDistance(distance)} · ${formatDuration(time)}`;
-}
-
-function dayBars(start: string, activities: Activity[]): DayBar[] {
-  const totals = new Map<string, number>();
-  for (const activity of activities) {
-    if (!activity.run) continue;
-    totals.set(activity.date, (totals.get(activity.date) ?? 0) + activity.distanceMeters / 1000);
-  }
-  return Array.from({ length: 30 }, (_, index) => {
-    const iso = addDays(start, index);
-    return {
-      iso,
-      label: formatDay(iso),
-      km: totals.get(iso) ?? 0,
-    };
-  });
-}
-
 function unavailableSnapshot(start: string, end: string, note: string): TrainingSnapshot {
   return {
     source: "unavailable",
@@ -472,7 +284,7 @@ function unavailableSnapshot(start: string, end: string, note: string): Training
     rangeLabel: formatRange(start, end),
     latestRun: null,
     latestActivity: null,
-    totalsLabel: "0 runs · 0.00 km · 0:00",
+    totalsLabel: "Running totals unavailable",
     metrics: [],
     dashboardMetrics: [],
     days: dayBars(start, []),
@@ -548,17 +360,12 @@ function sampleActivity(
     name,
     typeKey: "running",
     date,
+    startedAt: `${date}T12:00:00Z`,
     distanceMeters,
     durationSeconds,
     averageHr,
-    maxHr: null,
     averageSpeed: null,
     movingSeconds: null,
-    elevationGain: null,
-    cadence: null,
-    power: null,
-    calories: null,
-    startLocal: null,
     run: true,
   };
 }
@@ -573,26 +380,4 @@ function sampleLoop(): Point[] {
     });
   }
   return points;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
-function stringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function numberValue(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
-    return Number(value);
-  }
-  return null;
-}
-
-function positive(value: number | null): number | null {
-  if (value === null || value <= 0) return null;
-  return value;
 }

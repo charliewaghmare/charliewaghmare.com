@@ -34,6 +34,7 @@ function readChunk(
   do {
     if (index >= encoded.length) return null;
     byte = encoded.charCodeAt(index) - 63;
+    if (byte < 0 || byte > 63 || shift >= 35) return null;
     index += 1;
     result |= (byte & 0x1f) << shift;
     shift += 5;

@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -15,8 +14,8 @@ const BAR_OFFSET = 2;
 const VIEW_H = 96;
 const BASELINE = 90;
 const BAR_MAX_H = 84;
-const ACCENT = "#50b8ff";
-const HIGHLIGHT = "#8bd7ff";
+const ACCENT = "var(--td-accent)";
+const HIGHLIGHT = "var(--td-chart-highlight)";
 
 function slotCenterPct(index: number, chartW: number): number {
   return ((index * SLOT + BAR_OFFSET + BAR_WIDTH / 2) / chartW) * 100;
@@ -36,24 +35,13 @@ export function DistanceChart({
 }) {
   const [cursorIndex, setCursorIndex] = useState<number | null>(null);
   const [lastIndex, setLastIndex] = useState(0);
-  const [label, setLabel] = useState("");
-  const [canHover, setCanHover] = useState(false);
   const peak = maxKm > 0 ? maxKm : 1;
   const chartW = Math.max(days.length * SLOT, SLOT);
-
-  useEffect(() => {
-    const media = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const sync = () => setCanHover(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-
   const leaveChart = useCallback(() => setCursorIndex(null), []);
 
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<SVGSVGElement>) => {
-      if (!canHover || days.length === 0) return;
+      if (days.length === 0) return;
       const rect = event.currentTarget.getBoundingClientRect();
       if (rect.width <= 0) return;
       const ratio = (event.clientX - rect.left) / rect.width;
@@ -63,12 +51,8 @@ export function DistanceChart({
       );
       setCursorIndex(index);
       setLastIndex(index);
-      const day = days[index];
-      if (day && day.km > 0) {
-        setLabel(`${day.km.toFixed(1)} km`);
-      }
     },
-    [canHover, days],
+    [days],
   );
 
   const indexForPos = cursorIndex ?? lastIndex;
@@ -87,10 +71,10 @@ export function DistanceChart({
           className={["td-distance-tooltip", onRunDay ? "is-active" : ""]
             .filter(Boolean)
             .join(" ")}
-          style={{ left: `${tipLeft}%`, width: `${tipWidthPct}%` }}
+          style={{ left: `clamp(1.625rem, ${tipLeft}%, calc(100% - 1.625rem))`, width: `${tipWidthPct}%`, minWidth: "3.25rem" }}
           aria-hidden="true"
         >
-          {label || "\u00a0"}
+          {days[indexForPos]?.km ? `${days[indexForPos].km.toFixed(1)} km` : "\u00a0"}
         </div>
         <div className="td-distance-chart-plot">
           <div
@@ -108,10 +92,23 @@ export function DistanceChart({
             viewBox={`0 0 ${chartW} ${VIEW_H}`}
             preserveAspectRatio="none"
             className="td-chart h-36 w-full sm:h-44"
-            role="img"
-            aria-label="Run distance over the last 30 days"
-            onPointerMove={canHover ? onPointerMove : undefined}
-            onPointerLeave={canHover ? leaveChart : undefined}
+            role="group"
+            aria-label={onRunDay ? `${days[indexForPos].label}: ${days[indexForPos].km.toFixed(1)} km` : "Run distance over the last 30 days. Use arrow keys to inspect running days."}
+            onPointerMove={(event) => { if (event.pointerType !== "touch") onPointerMove(event); }}
+            onPointerDown={onPointerMove}
+            onPointerLeave={leaveChart}
+            tabIndex={0}
+            onBlur={leaveChart}
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(event.key)) return;
+              event.preventDefault();
+              if (event.key === "Escape") { leaveChart(); return; }
+              const indices = days.flatMap((day, index) => day.km > 0 ? [index] : []);
+              const position = indices.indexOf(cursorIndex ?? -1);
+              const next = event.key === "Home" ? indices[0] : event.key === "End" ? indices.at(-1)
+                : indices[Math.max(0, Math.min(indices.length - 1, position + (event.key === "ArrowLeft" ? -1 : 1)))];
+              if (next !== undefined) { setCursorIndex(next); setLastIndex(next); }
+            }}
           >
             {days.map((day, index) => {
               const hasRun = day.km > 0;

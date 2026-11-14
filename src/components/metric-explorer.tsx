@@ -1,5 +1,6 @@
 "use client";
 
+import { WithUnits } from "@/components/training-units";
 import {
   useCallback,
   useEffect,
@@ -66,7 +67,7 @@ export function MetricExplorer({
     setOpenId(null);
     const opener = openerRef.current;
     openerRef.current = null;
-    queueMicrotask(() => opener?.focus());
+    requestAnimationFrame(() => opener?.focus());
   }, []);
 
   return (
@@ -207,7 +208,7 @@ function MetricModal({
       ? spanDays(metric.series)
       : spanDays(metric.categories);
   const rangeSupported =
-    availableDays === 0 ? false : availableDays >= Math.min(selected.days, 7);
+    availableDays === 0 ? false : availableDays >= selected.days;
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -240,8 +241,12 @@ function MetricModal({
         first.focus();
       }
     };
+    const containFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !dialogRef.current?.contains(event.target)) closeRef.current?.focus();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("focusin", containFocus);
+    return () => { window.removeEventListener("keydown", onKey); document.removeEventListener("focusin", containFocus); };
   }, [onClose]);
 
   const onBackdrop = useCallback(
@@ -262,9 +267,8 @@ function MetricModal({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="td-overline tracking-[0.12em]">{metric.label}</p>
+            <p id={titleId} className="td-overline tracking-[0.12em]">{metric.label}</p>
             <h3
-              id={titleId}
               className="type-display td-text mt-2 text-[1.75rem] leading-[1.15]"
             >
               <WithUnits text={metric.value} />
@@ -286,18 +290,17 @@ function MetricModal({
 
         <div
           className="mt-6 flex flex-wrap gap-2"
-          role="tablist"
+          role="group"
           aria-label="History range"
         >
           {RANGES.map((item) => {
             const supported =
-              availableDays === 0 || availableDays >= Math.min(item.days, 7);
+              availableDays === 0 || availableDays >= item.days;
             return (
               <button
                 key={item.id}
                 type="button"
-                role="tab"
-                aria-selected={range === item.id}
+                aria-pressed={range === item.id}
                 className={[
                   "td-range-chip",
                   range === item.id ? "is-active" : "",
@@ -353,25 +356,4 @@ function spanDays(points: { iso: string }[]): number {
   const b = Date.parse(`${last}T12:00:00Z`);
   if (!Number.isFinite(a) || !Number.isFinite(b)) return points.length;
   return Math.floor(Math.abs(b - a) / 86400000) + 1;
-}
-
-const UNIT_PATTERN = /(\/km|\s+km|\s+bpm|\s+ms)/g;
-
-function WithUnits({
-  text,
-  unitClassName = "type-unit",
-}: {
-  text: string;
-  unitClassName?: string;
-}) {
-  const parts = text.split(UNIT_PATTERN);
-  return parts.map((part, index) =>
-    part === "/km" || part === " km" || part === " bpm" || part === " ms" ? (
-      <span key={`${part}-${index}`} className={unitClassName}>
-        {part}
-      </span>
-    ) : (
-      <span key={`${part}-${index}`}>{part}</span>
-    ),
-  );
 }

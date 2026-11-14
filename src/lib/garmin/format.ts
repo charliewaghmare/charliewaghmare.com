@@ -60,10 +60,11 @@ export function formatDistance(meters: number): string {
 }
 
 export function formatPace(meters: number, seconds: number): string | null {
-  if (meters < 50 || seconds <= 0) return null;
+  if (!Number.isFinite(meters) || !Number.isFinite(seconds) || meters < 50 || seconds <= 0) return null;
   const pace = seconds / (meters / 1000);
-  const minutes = Math.floor(pace / 60);
-  const secs = Math.round(pace % 60);
+  const rounded = Math.round(pace);
+  const minutes = Math.floor(rounded / 60);
+  const secs = rounded % 60;
   return `${minutes}:${String(secs).padStart(2, "0")} /km`;
 }
 

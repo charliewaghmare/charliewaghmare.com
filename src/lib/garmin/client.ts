@@ -101,6 +101,7 @@ function expiresSoon(token: string): boolean {
 }
 
 let memory: GarminToken | null = null;
+let configuredAccess: string | null = null;
 let refreshInFlight: Promise<GarminToken | null> | null = null;
 
 async function refreshToken(token: GarminToken): Promise<GarminToken | null> {
@@ -136,6 +137,7 @@ async function postRefresh(token: GarminToken): Promise<GarminToken | null> {
         "Cache-Control": "no-cache",
       },
       body,
+      redirect: "error",
       cache: "no-store",
       signal: AbortSignal.timeout(12000),
     });
@@ -172,6 +174,10 @@ function allowedHost(url: string, host: string): boolean {
 async function currentToken(forceRefresh = false): Promise<GarminToken | null> {
   const configured = readGarminToken();
   if (!configured.ok) return null;
+  if (configuredAccess !== configured.token.di_token) {
+    memory = null;
+    configuredAccess = configured.token.di_token;
+  }
   const token = memory ?? configured.token;
   if (forceRefresh || expiresSoon(token.di_token)) {
     const refreshed = await refreshToken(token);
@@ -216,6 +222,7 @@ async function request(
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
+      redirect: "error",
       cache: "no-store",
       signal: AbortSignal.timeout(12000),
     });

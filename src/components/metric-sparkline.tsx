@@ -1,4 +1,4 @@
-import type { HistoryPoint } from "@/lib/garmin/series";
+import { historyPosition, historyGap, type HistoryPoint } from "@/lib/garmin/series";
 
 export function MetricSparkline({
   points,
@@ -24,12 +24,11 @@ export function MetricSparkline({
   const span = max - min || 1;
   const width = 120;
   const height = 28;
-  const step = width / (points.length - 1);
   const path = points
     .map((point, index) => {
-      const x = index * step;
+      const x = historyPosition(points, point.iso) * width;
       const y = height - ((point.value - min) / span) * (height - 4) - 2;
-      return `${index === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+      return `${index === 0 || historyGap(points[index - 1].iso, point.iso) ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(" ");
 

@@ -1,3 +1,4 @@
+import { WithUnits } from "@/components/training-units";
 import Link from "next/link";
 import { DistanceChart } from "@/components/distance-chart";
 import { LatestRunPanel } from "@/components/latest-run-panel";
@@ -239,27 +240,6 @@ function ActivityStat({ label, value }: { label: string; value: string | null })
 function formatBestDate(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return formatDay(value);
-}
-
-const UNIT_PATTERN = /(\/km|\s+km|\s+bpm|\s+ms)/g;
-
-function WithUnits({
-  text,
-  unitClassName = "type-unit",
-}: {
-  text: string;
-  unitClassName?: string;
-}) {
-  const parts = text.split(UNIT_PATTERN);
-  return parts.map((part, index) =>
-    part === "/km" || part === " km" || part === " bpm" || part === " ms" ? (
-      <span key={`${part}-${index}`} className={unitClassName}>
-        {part}
-      </span>
-    ) : (
-      <span key={`${part}-${index}`}>{part}</span>
-    ),
-  );
 }
 
 export function TrainingFallback() {
