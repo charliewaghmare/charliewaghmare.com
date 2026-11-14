@@ -8,10 +8,12 @@ export function MetricHistoryChart({
   points,
   unit,
   label = "Historical metric chart",
+  continuous = false,
 }: {
   points: HistoryPoint[];
   unit?: string;
   label?: string;
+  continuous?: boolean;
 }) {
   const [active, setActive] = useState<string | null>(null);
   const width = 640;
@@ -45,7 +47,7 @@ export function MetricHistoryChart({
         return;
       }
       const previous = points[index - 1];
-      if (historyGap(previous.iso, coord.point.iso)) {
+      if (!continuous && historyGap(previous.iso, coord.point.iso)) {
         segments.push(`M${coord.x} ${coord.y}`);
       } else {
         segments.push(`L${coord.x} ${coord.y}`);
@@ -58,7 +60,7 @@ export function MetricHistoryChart({
       coords: mapped,
       path: segments.join(" "),
     };
-  }, [points, innerH, innerW]);
+  }, [points, innerH, innerW, continuous]);
 
   if (points.length === 0) {
     return (

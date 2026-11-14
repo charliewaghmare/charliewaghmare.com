@@ -3,9 +3,11 @@ import { historyPosition, historyGap, type HistoryPoint } from "@/lib/garmin/ser
 export function MetricSparkline({
   points,
   className,
+  continuous = false,
 }: {
   points: HistoryPoint[];
   className?: string;
+  continuous?: boolean;
 }) {
   if (points.length < 2) {
     return (
@@ -28,7 +30,8 @@ export function MetricSparkline({
     .map((point, index) => {
       const x = historyPosition(points, point.iso) * width;
       const y = height - ((point.value - min) / span) * (height - 4) - 2;
-      return `${index === 0 || historyGap(points[index - 1].iso, point.iso) ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+      const gap = index > 0 && !continuous && historyGap(points[index - 1].iso, point.iso);
+      return `${index === 0 || gap ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(" ");
 

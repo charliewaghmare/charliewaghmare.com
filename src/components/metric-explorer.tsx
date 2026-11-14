@@ -28,7 +28,6 @@ const RANGES = [
   { id: "7d", label: "7 days", days: 7 },
   { id: "30d", label: "30 days", days: 30 },
   { id: "90d", label: "90 days", days: 90 },
-  { id: "1y", label: "1 year", days: 365 },
 ] as const;
 
 type RangeId = (typeof RANGES)[number]["id"];
@@ -173,7 +172,7 @@ function MetricCardButton({
       </p>
       <div className="td-divider mt-auto border-t border-dashed pt-3">
         {spark.length >= 2 ? (
-          <MetricSparkline points={spark} />
+          <MetricSparkline points={spark} continuous={metric.id === "vo2"} />
         ) : (
           <p className="td-muted text-[0.6875rem]">
             {metric.kind === "categorical"
@@ -331,6 +330,7 @@ function MetricModal({
                 points={numeric}
                 unit={metric.unit}
                 label={`${metric.label} trend`}
+                continuous={metric.id === "vo2"}
               />
             ) : (
               <p className="td-muted text-sm leading-6">

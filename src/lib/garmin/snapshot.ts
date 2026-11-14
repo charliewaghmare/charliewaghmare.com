@@ -196,7 +196,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
 
   const dashboardMetrics = buildDashboardMetrics({
     end,
-    windowLabel: "year",
+    windowLabel: "90 days",
     metrics,
     series: {
       rhr: restingHrSeries(rhr),
@@ -327,7 +327,7 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
     metrics,
     dashboardMetrics: buildDashboardMetrics({
       end,
-      windowLabel: "year",
+      windowLabel: "90 days",
       metrics,
       series: {
         rhr: sampleHistory(end, 120, 3, 49, 2.5),
