@@ -29,24 +29,24 @@ export const personalBests: PersonalBest[] = [
     event: "10K",
     mark: "33:35",
     date: "2026-05-10",
-    note: "",
+    note: "Sporting Life 10K",
   },
   {
     event: "5K",
     mark: "16:00",
     date: "2026-03-28",
-    note: "",
+    note: "UBC Open",
   },
   {
     event: "1500m",
     mark: "4:07",
     date: "2026-07-21",
-    note: "",
+    note: "UTTC 800m Night",
   },
   {
     event: "800m",
     mark: "1:56",
     date: "2026-07-07",
-    note: "",
+    note: "UTTC Twilight 4",
   },
 ];
