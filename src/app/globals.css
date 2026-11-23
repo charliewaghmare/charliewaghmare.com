@@ -247,6 +247,10 @@ code.text-code {
 
 .training-theme .td-metric-card {
   cursor: pointer;
+}
+
+.training-theme .td-metric-card,
+.training-theme .td-latest-run-panel {
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -254,7 +258,9 @@ code.text-code {
 }
 
 .training-theme .td-metric-card:hover,
-.training-theme .td-metric-card:focus-visible {
+.training-theme .td-metric-card:focus-visible,
+.training-theme .td-latest-run-panel:hover,
+.training-theme .td-latest-run-panel:has(.td-run-card:focus-visible) {
   background: var(--td-elevated);
   border-color: color-mix(in srgb, var(--td-accent) 45%, var(--td-border));
   outline: none;
@@ -296,6 +302,10 @@ code.text-code {
 
 .training-theme .td-run-card:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--td-accent) 55%, transparent);
+}
+
+.training-theme .td-run-card:not(:disabled) {
+  cursor: pointer;
 }
 
 .training-theme .td-history-area {
@@ -452,6 +462,7 @@ code.text-code {
   .training-theme .td-distance-guide,
   .training-theme .td-distance-bar,
   .training-theme .td-metric-card,
+  .training-theme .td-latest-run-panel,
   .training-theme .td-modal-close,
   .training-theme .td-range-chip {
     transition: none;

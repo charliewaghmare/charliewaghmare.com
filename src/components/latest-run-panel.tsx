@@ -30,7 +30,7 @@ export function LatestRunPanel({ activity }: { activity: LatestActivity | null }
   };
 
   return (
-    <article className="td-card relative flex min-h-[20rem] flex-col p-5 sm:p-6">
+    <article className={`td-card${activity ? " td-latest-run-panel" : ""} relative flex min-h-[20rem] flex-col p-5 sm:p-6`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <button type="button" className="td-run-card min-w-0 flex-1 text-left" onClick={openModal} disabled={!activity}>
           <p className="td-overline tracking-[0.12em]">Latest run</p>
@@ -260,6 +260,7 @@ function ActivityModal({
                   area
                   note="Elevation against distance."
                   xValue={(sample) => sample.distanceMeters}
+                  xMax={activity.distanceMeters}
                   formatX={(meters) => formatDistance(meters)}
                 />
               ) : null}

@@ -55,6 +55,7 @@ export type ActivityRow = {
 };
 
 export type LatestActivity = ActivityRow & {
+  distanceMeters: number | null;
   whenLabel: string;
   durationLabel: string;
   durationKind: "Elapsed" | "Duration";
@@ -263,6 +264,7 @@ function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActiv
   const clock = formatLocalClock(activity.startLocal);
   return {
     ...row,
+    distanceMeters: activity.distanceMeters,
     whenLabel: clock ? `${row.dateLabel} · ${clock}` : row.dateLabel,
     durationLabel: row.timeLabel,
     durationKind: moving ? "Elapsed" : "Duration",

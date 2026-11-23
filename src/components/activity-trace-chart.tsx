@@ -14,6 +14,7 @@ export function ActivityTraceChart({
   area = false,
   note,
   xValue,
+  xMax,
   formatX = formatDuration,
 }: {
   samples: ActivitySample[];
@@ -24,6 +25,7 @@ export function ActivityTraceChart({
   area?: boolean;
   note: string;
   xValue?: (sample: ActivitySample) => number | null;
+  xMax?: number | null;
   formatX?: (value: number) => string;
 }) {
   const width = 640;
@@ -50,8 +52,8 @@ export function ActivityTraceChart({
       const value = xRead(sample);
       return value === null ? [] : [value];
     });
-    const xStart = xValues[0] ?? 0;
-    const xEnd = xValues[xValues.length - 1] ?? 0;
+    const xStart = 0;
+    const xEnd = Math.max(xMax ?? 0, ...xValues);
     const xSpan = xEnd - xStart || 1;
     const coords = samples.map((sample) => {
       const value = read(sample);
@@ -60,14 +62,14 @@ export function ActivityTraceChart({
       const y = value === null ? null : padTop + (1 - (value - lo) / (hi - lo)) * innerH;
       return { x, y, sample, value, xRaw };
     });
-    return { lo, hi, coords };
-  }, [samples, read, xValue, innerH, innerW]);
+    return { lo, hi, coords, xStart, xEnd };
+  }, [samples, read, xValue, xMax, innerH, innerW]);
 
   if (!plotted) {
     return <p className="td-muted text-sm leading-6">Not enough samples for this chart.</p>;
   }
 
-  const { lo, hi, coords } = plotted;
+  const { lo, hi, coords, xStart, xEnd } = plotted;
   const line = pathFrom(coords.map((coord) => ({ x: coord.x ?? 0, y: coord.x === null || coord.y === null ? null : coord.y })));
   const first = coords.find((coord) => coord.y !== null && coord.x !== null);
   const last = [...coords].reverse().find((coord) => coord.y !== null && coord.x !== null);
@@ -113,10 +115,10 @@ export function ActivityTraceChart({
         {areaPath ? <path d={areaPath} className="td-history-area" /> : null}
         <path d={line} className="td-history-line" fill="none" />
         <text x={padLeft} y={height - 12} className="td-history-axis">
-          {formatX(coords.find((coord) => coord.xRaw !== null)?.xRaw ?? 0)}
+          {formatX(xStart)}
         </text>
         <text x={width - padRight} y={height - 12} textAnchor="end" className="td-history-axis">
-          {formatX([...coords].reverse().find((coord) => coord.xRaw !== null)?.xRaw ?? 0)}
+          {formatX(xEnd)}
         </text>
       </ChartScrubber>
       <p className="td-muted mt-2 text-xs leading-5">{note}</p>
