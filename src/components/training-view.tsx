@@ -2,6 +2,7 @@ import { WithUnits } from "@/components/training-units";
 import Link from "next/link";
 import { DistanceChart } from "@/components/distance-chart";
 import { LatestRunPanel } from "@/components/latest-run-panel";
+import { RunsList } from "@/components/runs-list";
 import { MetricExplorer } from "@/components/metric-explorer";
 import type { PersonalBest } from "@/content/personal-bests";
 import { site } from "@/content/site";
@@ -117,41 +118,7 @@ export function TrainingView({
           ) : null}
         </div>
         {snapshot.activities.length > 0 ? (
-          <ul className="mt-4 divide-y divide-[var(--td-border-subtle)]">
-            {snapshot.activities.map((activity) => (
-              <li
-                key={activity.id}
-                className="td-activity-row -mx-2 grid gap-2 rounded-lg px-2 py-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,28rem)] sm:items-baseline sm:gap-8"
-              >
-                <div className="min-w-0">
-                  {activity.href ? (
-                    <a
-                      href={activity.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="td-activity-link text-[0.9375rem] font-semibold leading-snug"
-                    >
-                      {activity.name}
-                    </a>
-                  ) : (
-                    <p className="td-text text-[0.9375rem] font-semibold leading-snug">
-                      {activity.name}
-                    </p>
-                  )}
-                  <p className="td-muted mt-1 text-[0.8125rem] font-medium leading-5">
-                    {activity.dateLabel}
-                    {activity.run ? "" : ` · ${activity.typeLabel}`}
-                  </p>
-                </div>
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 sm:text-right">
-                  <ActivityStat label="Distance" value={activity.distanceLabel} />
-                  <ActivityStat label="Duration" value={activity.timeLabel} />
-                  <ActivityStat label="Pace" value={activity.paceLabel} />
-                  <ActivityStat label="Avg HR" value={activity.heartRateLabel} />
-                </dl>
-              </li>
-            ))}
-          </ul>
+          <RunsList activities={snapshot.activities} latestActivity={latestRun} />
         ) : (
           <p className="td-muted mt-6 text-sm font-normal leading-6">
             No runs in this window.
@@ -221,19 +188,6 @@ function TrainingOverviewPanel({
         <DistanceChart days={days} maxKm={maxKm} />
       </div>
     </article>
-  );
-}
-
-function ActivityStat({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <dt className="td-label text-[0.6875rem] font-medium uppercase tracking-[0.08em] sm:sr-only">
-        {label}
-      </dt>
-      <dd className="type-figure td-text mt-1 text-[0.8125rem] sm:mt-0 sm:text-sm">
-        <WithUnits text={value ?? "—"} unitClassName="type-unit-inline" />
-      </dd>
-    </div>
   );
 }
 

@@ -26,7 +26,8 @@ export function LatestRunPanel({ activity }: { activity: LatestActivity | null }
   };
   const closeModal = () => {
     setOpen(false);
-    opener.current?.focus();
+    const trigger = opener.current;
+    requestAnimationFrame(() => trigger?.focus());
   };
 
   return (
@@ -111,12 +112,18 @@ function TracePreview({ activity }: { activity: LatestActivity }) {
   return <p className="td-muted mt-auto pt-6 text-sm leading-6">{extras.join(" · ")}</p>;
 }
 
-function ActivityModal({
+export function ActivityModal({
   activity,
   onClose,
+  loading = false,
+  error = null,
+  onRetry,
 }: {
   activity: LatestActivity;
   onClose: () => void;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -156,8 +163,15 @@ function ActivityModal({
         first.focus();
       }
     };
+    const containFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !dialogRef.current?.contains(event.target)) closeRef.current?.focus();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("focusin", containFocus);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("focusin", containFocus);
+    };
   }, [onClose]);
 
   const onBackdrop = useCallback(
@@ -213,7 +227,19 @@ function ActivityModal({
           </dl>
         ) : null}
 
-        {charts.length > 0 && selected ? (
+        {loading ? (
+          <div className="mt-8" role="status">
+            <p className="td-muted text-sm leading-6">Loading run details…</p>
+            <div className="td-skeleton mt-3 h-48 animate-pulse rounded-lg" aria-hidden="true" />
+          </div>
+        ) : error ? (
+          <div className="mt-8" role="alert">
+            <p className="td-muted text-sm leading-6">{error}</p>
+            <button type="button" className="td-range-chip mt-3" onClick={onRetry}>
+              Try again
+            </button>
+          </div>
+        ) : charts.length > 0 && selected ? (
           <div className="mt-8">
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Activity charts">
               {charts.map((item) => (

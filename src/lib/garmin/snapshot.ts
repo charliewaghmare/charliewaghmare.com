@@ -87,7 +87,7 @@ export type TrainingSnapshot = {
   metrics: Metric[];
   dashboardMetrics: DashboardMetric[];
   days: DayBar[];
-  activities: ActivityRow[];
+  activities: LatestActivity[];
 };
 
 export async function getTrainingSnapshot(): Promise<TrainingSnapshot> {
@@ -220,7 +220,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     metrics,
     dashboardMetrics,
     days: dayBars(start, activities),
-    activities: activities.filter((activity) => activity.run).map(toRow),
+    activities: activities.filter((activity) => activity.run).map((activity) => toLatestActivity(activity, emptyTrace())),
   };
 }
 
@@ -238,11 +238,11 @@ async function optional(
 
 type ActivityTrace = { points: Point[]; samples: ActivitySample[]; splits: ActivitySplit[] };
 function emptyTrace(): ActivityTrace { return { points: [], samples: [], splits: [] }; }
-async function activityTrace(activityId: string, distanceMeters: number | null): Promise<ActivityTrace> {
+async function activityTrace(activityId: string, distanceMeters: number | null, strict = false): Promise<ActivityTrace> {
   if (!/^\d+$/.test(activityId)) return emptyTrace();
   const id = encodeURIComponent(activityId);
   const [details, splits] = await Promise.all([
-    optional(`/activity-service/activity/${id}/details`, { maxChartSize: 2000, maxPolylineSize: 1600 }),
+    (strict ? garminGet : optional)(`/activity-service/activity/${id}/details`, { maxChartSize: 2000, maxPolylineSize: 1600 }),
     optional(`/activity-service/activity/${id}/splits`),
   ]);
   let points = pointsFromPayloads([details]);
@@ -251,6 +251,20 @@ async function activityTrace(activityId: string, distanceMeters: number | null):
   const samples = samplesFromDetails(details, distanceMeters ?? 0);
   const recordedSplits = splitsFromPayload(splits);
   return { points, samples: downsampleSamples(samples), splits: recordedSplits.length ? recordedSplits : deriveKilometerSplits(samples) };
+}
+
+/** Only call with a summary from the public training snapshot. */
+export async function getActivityDetail(activity: LatestActivity): Promise<LatestActivity> {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  const trace = await activityTrace(activity.id, activity.distanceMeters, true);
+  const heartCount = trace.samples.filter((sample) => sample.heartRate !== null).length;
+  const paceCount = trace.samples.filter((sample) => sample.paceSecondsPerKm !== null).length;
+  return {
+    ...activity,
+    ...trace,
+    trace: heartCount >= 8 ? "heart-rate" : paceCount >= 8 ? "pace" : null,
+  };
 }
 
 function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActivity {
@@ -347,7 +361,7 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
       },
     }),
     days: dayBars(start, samples),
-    activities: samples.map(toRow),
+    activities: samples.map((activity) => toLatestActivity(activity, emptyTrace())),
   };
 }
 
