@@ -3,7 +3,7 @@ import test from "node:test";
 import { parseActivities, dayBars, paceLabelFor, toRow, toRunCard, activityWindow } from "./activities";
 import { formatPace, vancouverToday } from "./format";
 import { latestRestingHr, latestHrv, latestReadiness, latestSleepScore, trainingLoads, buildMetrics } from "./extract";
-import { filterSeries, readinessSeries, sleepScoreSeries, historyPosition, historyGap, isoFrom } from "./series";
+import { filterSeries, readinessSeries, sleepScoreSeries, historyPosition, historyGap, isoFrom, vo2Series } from "./series";
 import { decodePolyline } from "./polyline";
 
 const run = (id: number, startTimeGMT: string, extra = {}) => ({ activityId: id, startTimeGMT,
@@ -79,6 +79,25 @@ test("missing metrics are not zero and weekly load is not substituted for acute 
   assert.deepEqual(trainingLoads({ weeklyTrainingLoad: 123 }), { acute: null, chronic: null, ratio: null });
   const metrics = buildMetrics({ rhr: null, hrv: null, vo2: null, status: null, dailyStatus: null, balance: null, readiness: null, sleep: [] });
   assert.ok(metrics.every((metric) => metric.value === "—"));
+});
+
+test("VO2 max history keeps dated readings from the shapes Garmin returns", () => {
+  const series = vo2Series([
+    { generic: { calendarDate: "2026-10-01", vo2MaxPreciseValue: 51.4 } },
+    { userMetrics: [{ calendarDate: "2026-10-08", vo2MaxValue: 51 }] },
+    { vo2MaxMap: { "2026-10-15": 52.2, "2026-10-22": { value: 52.8 } } },
+    { metricsMap: { VO2_MAX: [{ calendarDate: "2026-11-01", value: 53 }] } },
+    { calendarDate: "2026-11-13", restingHeartRate: 48, value: 48 },
+  ]);
+  assert.deepEqual(series.map((point) => point.iso), [
+    "2026-10-01",
+    "2026-10-08",
+    "2026-10-15",
+    "2026-10-22",
+    "2026-11-01",
+  ]);
+  assert.equal(series[0]?.value, 51.4);
+  assert.equal(series.at(-1)?.value, 53);
 });
 
 test("history ranges are inclusive and irregular observations keep real time spacing and gaps", () => {

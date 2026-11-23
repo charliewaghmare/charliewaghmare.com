@@ -145,6 +145,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     hrv,
     vo2,
     vo2History,
+    vo2Daily,
     status,
     dailyStatus,
     statusHistory,
@@ -165,6 +166,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     optional(`/hrv-service/hrv/daily/${historyStart}/${end}`),
     optional(`/metrics-service/metrics/maxmet/latest/${end}`),
     optional(`/metrics-service/metrics/maxmet/${historyStart}/${end}`),
+    optional(`/metrics-service/metrics/maxmet/daily/${historyStart}/${end}`),
     optional(`/metrics-service/metrics/trainingstatus/aggregated/${end}`),
     optional(`/metrics-service/metrics/trainingstatus/daily/${end}`),
     optional(`/metrics-service/metrics/trainingstatus/daily/${historyStart}/${end}`),
@@ -194,7 +196,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
 
   const dashboardMetrics = buildDashboardMetrics({
     end,
-    windowLabel: "year",
+    windowLabel: "90 days",
     metrics,
     series: {
       rhr: restingHrSeries(rhr),
@@ -202,7 +204,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
       readiness: readinessSeries(readiness),
       sleep: sleepScoreSeries([sleepA, sleepB, sleepHistoryA, sleepHistoryB]),
       load: loadSeries,
-      vo2: vo2Series(vo2History ?? vo2),
+      vo2: vo2Series([vo2Daily, vo2History, vo2]),
       status: statusSeries,
     },
   });
@@ -325,7 +327,7 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
     metrics,
     dashboardMetrics: buildDashboardMetrics({
       end,
-      windowLabel: "year",
+      windowLabel: "90 days",
       metrics,
       series: {
         rhr: sampleHistory(end, 120, 3, 49, 2.5),

@@ -224,24 +224,62 @@ export function trainingLoadSeries(payload: unknown): HistoryPoint[] {
 }
 
 export function vo2Series(payload: unknown): HistoryPoint[] {
-  const rows = Array.isArray(payload)
-    ? payload
-    : Array.isArray(findByKey(payload, "maxMetList"))
-      ? (findByKey(payload, "maxMetList") as unknown[])
-      : Array.isArray(findByKey(payload, "generic"))
-        ? (findByKey(payload, "generic") as unknown[])
-        : [];
   const points: HistoryPoint[] = [];
-  for (const row of rows) {
-    const iso = isoFrom(row);
-    const value =
-      findNumber(row, "vo2MaxPreciseValue") ??
-      findNumber(row, "vo2MaxValue") ??
-      findNumber(row, "vo2Max");
-    if (!iso || value === null || value <= 0) continue;
-    points.push({ iso, value });
-  }
+  collectVo2(payload, points, 0, "");
   return uniquePoints(points);
+}
+
+function collectVo2(
+  value: unknown,
+  points: HistoryPoint[],
+  depth: number,
+  hint: string,
+): void {
+  if (value == null || depth > 7) return;
+  if (Array.isArray(value)) {
+    for (const item of value) collectVo2(item, points, depth + 1, hint);
+    return;
+  }
+  const record = asRecord(value);
+  if (!record) return;
+  const hinted = /vo2|maxmet/i.test(hint);
+  const reading = vo2Reading(record, hinted);
+  if (reading) points.push(reading);
+  for (const [key, child] of Object.entries(record)) {
+    if (/^\d{4}-\d{2}-\d{2}/.test(key) && hinted) {
+      const dated = datedVo2(key.slice(0, 10), child);
+      if (dated) points.push(dated);
+    }
+    if (child && typeof child === "object") collectVo2(child, points, depth + 1, key);
+  }
+}
+
+function vo2Reading(record: RecordValue, allowBare: boolean): HistoryPoint | null {
+  const nested = asRecord(record.generic);
+  const source = nested ?? record;
+  const iso = isoFrom(source);
+  const value = vo2Value(source, allowBare);
+  if (!iso || value === null) return null;
+  return { iso, value };
+}
+
+function datedVo2(iso: string, value: unknown): HistoryPoint | null {
+  const direct = asNumber(value);
+  if (direct !== null && direct >= 15 && direct <= 90) return { iso, value: direct };
+  const record = asRecord(value);
+  if (!record) return null;
+  const reading = vo2Value(asRecord(record.generic) ?? record, true);
+  return reading === null ? null : { iso, value: reading };
+}
+
+function vo2Value(record: RecordValue, allowBare: boolean): number | null {
+  const value =
+    asNumber(record.vo2MaxPreciseValue) ??
+    asNumber(record.vo2MaxValue) ??
+    asNumber(record.vo2Max) ??
+    (allowBare ? asNumber(record.value) ?? asNumber(record.preciseValue) : null);
+  if (value === null || value < 15 || value > 90) return null;
+  return value;
 }
 
 export function trainingStatusCategories(payload: unknown): CategoryPoint[] {
@@ -349,6 +387,7 @@ export function buildDashboardMetrics(input: {
     {
       id: "vo2",
       label: "VO2 max",
+      unit: "ml/kg/min",
       explanation: "Estimated maximal oxygen uptake from Garmin.",
       kind: "numeric",
       series: input.series.vo2,
