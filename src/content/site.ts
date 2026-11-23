@@ -25,7 +25,7 @@ export const site = {
   about: "I am a 2nd year materials engineering student at the University of British Columbia",
   /**
    * Projects are hidden while this list is empty.
-   * Add an entry when you want one on the page. Include href, repo, or both.
+   * Add an entry when you want one on the page. Links (href and repo) are optional.
    *
    * {
    *   title: "Project name",
@@ -34,7 +34,23 @@ export const site = {
    *   repo: "https://github.com/you/project",
    * }
    */
-  projects: [] as Project[],
+  projects: [
+    {
+      title: "Test project: Materials comparison",
+      description:
+        "A sample comparison of aluminum, steel, and polymer options for a lightweight bracket, balancing stiffness, weight, and cost.",
+    },
+    {
+      title: "Test project: Heat treatment study",
+      description:
+        "A placeholder study of how different heat treatments affect the hardness and microstructure of steel.",
+    },
+    {
+      title: "Test project: Tensile testing",
+      description:
+        "A sample analysis of stress–strain curves, comparing yield strength, tensile strength, and ductility across several materials.",
+    },
+  ] as Project[],
 };
 
 export const resumeFile = {
