@@ -17,6 +17,7 @@ import {
 } from "@/components/metric-history-chart";
 import { MetricSparkline } from "@/components/metric-sparkline";
 import { TrainingBalanceBars } from "@/components/training-balance-bars";
+import { TrainingStatusCard } from "@/components/training-status-card";
 import { addDays, vancouverToday } from "@/lib/garmin/format";
 import {
   filterCategories,
@@ -80,15 +81,14 @@ export function MetricExplorer({
           >
             Now
           </h2>
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            {primary.map((metric) => (
+          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {primary.map((metric) => metric.id === "status" ? (
+              <TrainingStatusCard key={metric.id} metric={metric} />
+            ) : (
               <MetricCardButton
                 key={metric.id}
                 metric={metric}
                 onOpen={(trigger) => openMetricById(metric.id, trigger)}
-                className={
-                  metric.id === "status" ? "col-span-2 md:col-span-1" : undefined
-                }
               />
             ))}
           </div>

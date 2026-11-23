@@ -41,12 +41,12 @@ export const personalBests: PersonalBest[] = [
     event: "1500m",
     mark: "4:07",
     date: "2026-07-21",
-    note: "UTTC 800m Night",
+    note: "UTTC Twilight 4",
   },
   {
     event: "800m",
     mark: "1:56",
     date: "2026-07-07",
-    note: "UTTC Twilight 4",
+    note: "UTTC 800m Night",
   },
 ];
