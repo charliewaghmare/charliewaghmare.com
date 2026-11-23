@@ -4,6 +4,19 @@ export type Metric = {
   label: string;
   value: string;
   detail?: string;
+  balance?: TrainingBalance;
+};
+
+export type TrainingBalance = {
+  phrase: string | null;
+  low: number | null;
+  high: number | null;
+  anaerobic: number | null;
+  optimal: {
+    low: { min: number; max: number } | null;
+    high: { min: number; max: number } | null;
+    anaerobic: { min: number; max: number } | null;
+  };
 };
 
 type RecordValue = Record<string, unknown>;
@@ -127,21 +140,31 @@ export function trainingLoads(payload: unknown): {
   };
 }
 
-export function loadBalance(payload: unknown): {
-  phrase: string | null;
-  low: number | null;
-  high: number | null;
-  anaerobic: number | null;
-} {
+export function loadBalance(payload: unknown): TrainingBalance {
   const map = asRecord(findByKey(payload, "metricsTrainingLoadBalanceDTOMap"));
-  const sport = map?.RUNNING ?? (map ? Object.values(map)[0] : payload);
+  const devices = Object.values(map ?? {}).map(asRecord).filter((device) => device !== null);
+  const sport = map?.RUNNING ?? devices.find((device) => device.primaryTrainingDevice === true) ?? devices[0] ?? payload;
+  const load = (key: string) => {
+    const value = findNumber(sport, key);
+    return value !== null && value >= 0 ? value : null;
+  };
+  const target = (key: string) => {
+    const min = load(`${key}TargetMin`);
+    const max = load(`${key}TargetMax`);
+    return min !== null && max !== null && max > min ? { min, max } : null;
+  };
   return {
     phrase:
       findText(sport, "trainingBalanceFeedbackPhrase") ??
       findText(payload, "trainingBalanceFeedbackPhrase"),
-    low: findNumber(sport, "monthlyLoadAerobicLow"),
-    high: findNumber(sport, "monthlyLoadAerobicHigh"),
-    anaerobic: findNumber(sport, "monthlyLoadAnaerobic"),
+    low: load("monthlyLoadAerobicLow"),
+    high: load("monthlyLoadAerobicHigh"),
+    anaerobic: load("monthlyLoadAnaerobic"),
+    optimal: {
+      low: target("monthlyLoadAerobicLow"),
+      high: target("monthlyLoadAerobicHigh"),
+      anaerobic: target("monthlyLoadAnaerobic"),
+    },
   };
 }
 
@@ -177,7 +200,7 @@ export function buildMetrics(input: {
 }): Metric[] {
   const statusText = trainingStatus(input.status) ?? trainingStatus(input.dailyStatus);
   const loads = trainingLoads(input.dailyStatus);
-  const balance = loadBalance(input.balance);
+  const balance = loadBalance(input.balance ?? input.status);
   const resting = latestRestingHr(input.rhr, input.end);
   const hrv = latestHrv(input.hrv);
   const vo2 = vo2Max(input.vo2);
@@ -201,6 +224,7 @@ export function buildMetrics(input: {
     },
     {
       label: "Training balance",
+      balance,
       value: balance.phrase ? titlePhrase(balance.phrase) : balanceDetail(balance.low, balance.high, balance.anaerobic) ?? "—",
       detail: balance.phrase
         ? balanceDetail(balance.low, balance.high, balance.anaerobic)

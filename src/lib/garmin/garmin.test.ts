@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseActivities, dayBars, paceLabelFor, toRow, toRunCard, activityWindow } from "./activities";
 import { formatPace, vancouverToday } from "./format";
-import { latestRestingHr, latestHrv, latestReadiness, latestSleepScore, trainingLoads, buildMetrics } from "./extract";
-import { filterSeries, readinessSeries, sleepScoreSeries, historyPosition, historyGap, isoFrom, vo2Series } from "./series";
+import { latestRestingHr, latestHrv, latestReadiness, latestSleepScore, trainingLoads, loadBalance, buildMetrics } from "./extract";
+import { buildDashboardMetrics, filterSeries, readinessSeries, sleepScoreSeries, historyPosition, historyGap, isoFrom, vo2Series } from "./series";
 import { decodePolyline } from "./polyline";
 
 const run = (id: number, startTimeGMT: string, extra = {}) => ({ activityId: id, startTimeGMT,
@@ -88,6 +88,45 @@ test("missing metrics are not zero and weekly load is not substituted for acute 
   assert.deepEqual(trainingLoads({ weeklyTrainingLoad: 123 }), { acute: null, chronic: null, ratio: null });
   const metrics = buildMetrics({ rhr: null, hrv: null, vo2: null, status: null, dailyStatus: null, balance: null, readiness: null, sleep: [] });
   assert.ok(metrics.every((metric) => metric.value === "—"));
+});
+
+test("training balance keeps Garmin target bounds with the primary device's loads through the dashboard", () => {
+  const payload = { mostRecentTrainingLoadBalance: { metricsTrainingLoadBalanceDTOMap: {
+    secondary: { monthlyLoadAerobicLow: 999, monthlyLoadAerobicLowTargetMin: 800, monthlyLoadAerobicLowTargetMax: 1200 },
+    primary: {
+      primaryTrainingDevice: true,
+      trainingBalanceFeedbackPhrase: "BALANCED",
+      monthlyLoadAerobicLow: "140", monthlyLoadAerobicLowTargetMin: 100, monthlyLoadAerobicLowTargetMax: 180,
+      monthlyLoadAerobicHigh: 90, monthlyLoadAerobicHighTargetMin: 80, monthlyLoadAerobicHighTargetMax: 140,
+      monthlyLoadAnaerobic: 0, monthlyLoadAnaerobicTargetMin: 25, monthlyLoadAnaerobicTargetMax: 55,
+    },
+  } } };
+  const balance = loadBalance(payload);
+  assert.equal(balance.low, 140);
+  assert.equal(balance.high, 90);
+  assert.equal(balance.anaerobic, 0);
+  assert.deepEqual(balance.optimal, { low: { min: 100, max: 180 }, high: { min: 80, max: 140 }, anaerobic: { min: 25, max: 55 } });
+  // The aggregated status can carry the same block when the separate endpoint is absent.
+  const metrics = buildMetrics({ rhr: null, hrv: null, vo2: null, status: payload, dailyStatus: null, balance: null, readiness: null, sleep: [] });
+  const dashboard = buildDashboardMetrics({ end: "2026-11-23", windowLabel: "30 days", metrics,
+    series: { rhr: [], hrv: [], vo2: [], readiness: [], sleep: [], load: [], status: [] } });
+  assert.deepEqual(dashboard.find((metric) => metric.id === "balance")?.balance, balance);
+});
+
+test("training balance never invents target bounds for missing or invalid Garmin data", () => {
+  const balance = loadBalance({
+    monthlyLoadAerobicLow: 0,
+    monthlyLoadAerobicLowTargetMin: 100,
+    monthlyLoadAerobicHigh: -1,
+    monthlyLoadAerobicHighTargetMin: 150, monthlyLoadAerobicHighTargetMax: 100,
+    monthlyLoadAnaerobic: 36,
+    monthlyLoadAnaerobicTargetMin: -10, monthlyLoadAnaerobicTargetMax: 55,
+  });
+  assert.equal(balance.low, 0);
+  assert.equal(balance.high, null);
+  assert.equal(balance.anaerobic, 36);
+  assert.deepEqual(balance.optimal, { low: null, high: null, anaerobic: null });
+  assert.equal(loadBalance(null).low, null);
 });
 
 test("VO2 max history keeps dated readings from the shapes Garmin returns", () => {

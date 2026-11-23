@@ -76,6 +76,9 @@ code.text-code {
   --td-elevated: #24323d;
   --td-accent: #50b8ff;
   --td-chart-highlight: #8bd7ff;
+  --td-balance-low: #4ade80;
+  --td-balance-high: #facc15;
+  --td-balance-anaerobic: #f87171;
   --td-guide: #a8b3be;
   --td-accent-hover: #79caff;
   --td-text: #f0f4f8;
@@ -296,6 +299,41 @@ code.text-code {
 
 .training-theme .td-sparkline-empty {
   min-height: 1.75rem;
+}
+
+.training-theme .td-balance-track {
+  position: relative;
+  height: 1.25rem;
+}
+
+.training-theme .td-balance-track::before {
+  content: "";
+  position: absolute;
+  inset: 0.375rem 0;
+  border-radius: 0.125rem;
+  background: var(--td-border-subtle);
+}
+
+.training-theme .td-balance-fill {
+  position: absolute;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  border-radius: 0.125rem;
+}
+
+.training-theme .td-balance-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 1px dashed var(--td-muted);
+  border-radius: 0.25rem;
+}
+
+.training-theme .td-balance-legend {
+  width: 1.25rem;
+  height: 0.75rem;
+  border: 1px dashed var(--td-muted);
+  border-radius: 0.125rem;
 }
 
 .training-theme .td-run-sparkline {

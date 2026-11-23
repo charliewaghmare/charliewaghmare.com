@@ -327,7 +327,22 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
   const metrics = [
     { label: "Training status", value: "Productive" },
     { label: "Training load", value: "412", detail: "Chronic 380 · Ratio 1.08" },
-    { label: "Training balance", value: "Balanced", detail: "Low 140 · High 90 · Anaerobic 36" },
+    {
+      label: "Training balance",
+      value: "Balanced",
+      detail: "Low 140 · High 90 · Anaerobic 36",
+      balance: {
+        phrase: "BALANCED",
+        low: 140,
+        high: 90,
+        anaerobic: 36,
+        optimal: {
+          low: { min: 100, max: 180 },
+          high: { min: 80, max: 140 },
+          anaerobic: { min: 25, max: 55 },
+        },
+      },
+    },
     { label: "VO2 max", value: "52" },
     { label: "Resting HR", value: "48 bpm", detail: "30-day avg 49 bpm" },
     { label: "HRV", value: "68 ms", detail: "7-day 64 ms" },

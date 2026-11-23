@@ -16,6 +16,7 @@ import {
   MetricHistoryChart,
 } from "@/components/metric-history-chart";
 import { MetricSparkline } from "@/components/metric-sparkline";
+import { TrainingBalanceBars } from "@/components/training-balance-bars";
 import { addDays, vancouverToday } from "@/lib/garmin/format";
 import {
   filterCategories,
@@ -167,20 +168,28 @@ function MetricCardButton({
       >
         <WithUnits text={metric.value} />
       </p>
-      <p className="td-muted mt-2 min-h-5 text-[0.8125rem] font-normal leading-5">
-        {metric.detail ?? metric.explanation}
-      </p>
-      <div className="td-divider mt-auto border-t border-dashed pt-3">
-        {spark.length >= 2 ? (
-          <MetricSparkline points={spark} continuous={metric.id === "vo2"} />
-        ) : (
-          <p className="td-muted text-[0.6875rem]">
-            {metric.kind === "categorical"
-              ? "Tap for status history"
-              : "No trend yet"}
+      {metric.id === "balance" ? (
+        <div className="mt-4 w-full">
+          <TrainingBalanceBars balance={metric.balance} />
+        </div>
+      ) : (
+        <>
+          <p className="td-muted mt-2 min-h-5 text-[0.8125rem] font-normal leading-5">
+            {metric.detail ?? metric.explanation}
           </p>
-        )}
-      </div>
+          <div className="td-divider mt-auto border-t border-dashed pt-3">
+            {spark.length >= 2 ? (
+              <MetricSparkline points={spark} continuous={metric.id === "vo2"} />
+            ) : (
+              <p className="td-muted text-[0.6875rem]">
+                {metric.kind === "categorical"
+                  ? "Tap for status history"
+                  : "No trend yet"}
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </button>
   );
 }
@@ -274,7 +283,7 @@ function MetricModal({
             </h3>
             <p className="td-muted mt-2 max-w-xl text-sm leading-6">
               {metric.explanation}
-              {metric.detail ? ` ${metric.detail}.` : ""}
+              {metric.id !== "balance" && metric.detail ? ` ${metric.detail}.` : ""}
             </p>
           </div>
           <button
@@ -287,35 +296,37 @@ function MetricModal({
           </button>
         </div>
 
-        <div
-          className="mt-6 flex flex-wrap gap-2"
-          role="group"
-          aria-label="History range"
-        >
-          {RANGES.map((item) => {
-            const supported =
-              availableDays === 0 || availableDays >= item.days;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={range === item.id}
-                className={[
-                  "td-range-chip",
-                  range === item.id ? "is-active" : "",
-                  !supported ? "is-limited" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                onClick={() => setRange(item.id)}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
+        {metric.id !== "balance" ? (
+          <div
+            className="mt-6 flex flex-wrap gap-2"
+            role="group"
+            aria-label="History range"
+          >
+            {RANGES.map((item) => {
+              const supported =
+                availableDays === 0 || availableDays >= item.days;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={range === item.id}
+                  className={[
+                    "td-range-chip",
+                    range === item.id ? "is-active" : "",
+                    !supported ? "is-limited" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => setRange(item.id)}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
-        {!rangeSupported && availableDays > 0 ? (
+        {metric.id !== "balance" && !rangeSupported && availableDays > 0 ? (
           <p className="td-muted mt-3 text-[0.8125rem] leading-5">
             Recorded history covers about {availableDays} day
             {availableDays === 1 ? "" : "s"}. Longer ranges only show the
@@ -324,7 +335,9 @@ function MetricModal({
         ) : null}
 
         <div className="mt-6">
-          {metric.kind === "numeric" ? (
+          {metric.id === "balance" ? (
+            <TrainingBalanceBars balance={metric.balance} detailed />
+          ) : metric.kind === "numeric" ? (
             numeric.length > 0 ? (
               <MetricHistoryChart
                 points={numeric}

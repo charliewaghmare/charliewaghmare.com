@@ -1,4 +1,5 @@
 import { vancouverToday } from "./format";
+import type { TrainingBalance } from "./extract";
 export type HistoryPoint = {
   iso: string;
   value: number;
@@ -20,6 +21,7 @@ export type DashboardMetric = {
   series: HistoryPoint[];
   categories: CategoryPoint[];
   historyNote: string | null;
+  balance?: TrainingBalance;
 };
 
 type RecordValue = Record<string, unknown>;
@@ -347,6 +349,7 @@ export function buildDashboardMetrics(input: {
     label: string;
     value: string;
     detail?: string;
+    balance?: TrainingBalance;
   }[];
   series: {
     rhr: HistoryPoint[];
@@ -445,6 +448,7 @@ export function buildDashboardMetrics(input: {
       label: entry.label,
       value: metric.value,
       detail: metric.detail,
+      balance: metric.balance,
       unit: entry.unit,
       explanation: entry.explanation,
       kind: entry.kind,
