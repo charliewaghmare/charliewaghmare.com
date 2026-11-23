@@ -54,7 +54,7 @@ export function TrainingBalanceBars({
                   load === null ? "load unavailable" : `load ${value}`
                 }. ${
                   target
-                    ? `Garmin optimal range ${target}.`
+                    ? `Optimal range ${target}.`
                     : "Optimal range unavailable."
                 }`}
               >
@@ -90,7 +90,7 @@ export function TrainingBalanceBars({
         {hasRange ? (
           <>
             <span className="td-balance-legend" aria-hidden="true" />
-            Optimal range
+            Garmin optimal range
           </>
         ) : (
           "Optimal ranges unavailable"
