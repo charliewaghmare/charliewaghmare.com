@@ -220,6 +220,10 @@ code.text-code {
   opacity: 1;
 }
 
+.training-theme .td-chart-scrubber .td-distance-tooltip {
+  width: min(10rem, 100%);
+}
+
 .training-theme .td-distance-guide {
   position: absolute;
   z-index: 2;
@@ -406,6 +410,12 @@ code.text-code {
 
 .training-theme .td-history-point {
   fill: var(--td-accent);
+}
+
+.training-theme .td-history-active-point {
+  fill: var(--td-chart-highlight);
+  stroke: var(--td-surface);
+  stroke-width: 2;
 }
 
 .training-theme .td-history-tooltip {

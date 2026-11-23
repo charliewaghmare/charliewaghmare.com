@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { ChartScrubber } from "@/components/chart-scrubber";
 import type { ActivitySample } from "@/lib/garmin/activity-detail";
 import { formatDuration } from "@/lib/garmin/format";
 
@@ -25,7 +26,6 @@ export function ActivityTraceChart({
   xValue?: (sample: ActivitySample) => number | null;
   formatX?: (value: number) => string;
 }) {
-  const [active, setActive] = useState<number | null>(null);
   const width = 640;
   const height = 260;
   const padTop = 16;
@@ -77,32 +77,24 @@ export function ActivityTraceChart({
       ? `${line} L${last.x ?? 0} ${base} L${first.x ?? 0} ${base} Z`
       : null;
   const yTicks = [lo, (lo + hi) / 2, hi];
-  const activeCoord = active !== null ? coords[active] : null;
 
   return (
     <div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="h-64 w-full"
-        role="img"
-        aria-label={axisLabel}
-        onPointerLeave={() => setActive(null)}
-        onPointerMove={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          const ratio = (event.clientX - rect.left) / rect.width;
-          const x = ratio * width;
-          let nearest = 0;
-          let best = Number.POSITIVE_INFINITY;
-          coords.forEach((coord, index) => {
-            if (coord.y === null || coord.x === null) return;
-            const distance = Math.abs(coord.x - x);
-            if (distance < best) {
-              best = distance;
-              nearest = index;
-            }
-          });
-          setActive(nearest);
-        }}
+      <ChartScrubber
+        points={coords.flatMap((coord, index) =>
+          coord.x === null || coord.y === null || coord.value === null || coord.xRaw === null ? [] : [{
+            id: String(index),
+            x: coord.x,
+            y: coord.y,
+            valueLabel: `${formatY(coord.value)} ${unit}`,
+            label: `${formatX(coord.xRaw)} · ${formatY(coord.value)} ${unit}`,
+          }],
+        )}
+        width={width}
+        height={height}
+        plotTop={padTop}
+        plotBottom={base}
+        label={axisLabel}
       >
         <text x={padLeft} y={12} className="td-history-axis">
           {unit}
@@ -120,28 +112,14 @@ export function ActivityTraceChart({
         })}
         {areaPath ? <path d={areaPath} className="td-history-area" /> : null}
         <path d={line} className="td-history-line" fill="none" />
-        {activeCoord?.y !== null && activeCoord?.x !== null && activeCoord ? (
-          <line
-            x1={activeCoord.x}
-            x2={activeCoord.x}
-            y1={padTop}
-            y2={base}
-            className="td-history-grid"
-          />
-        ) : null}
         <text x={padLeft} y={height - 12} className="td-history-axis">
           {formatX(coords.find((coord) => coord.xRaw !== null)?.xRaw ?? 0)}
         </text>
         <text x={width - padRight} y={height - 12} textAnchor="end" className="td-history-axis">
           {formatX([...coords].reverse().find((coord) => coord.xRaw !== null)?.xRaw ?? 0)}
         </text>
-      </svg>
+      </ChartScrubber>
       <p className="td-muted mt-2 text-xs leading-5">{note}</p>
-      <p className="td-history-tooltip type-figure">
-        {activeCoord?.value !== null && activeCoord?.value !== undefined
-          ? `${formatX(activeCoord.xRaw ?? 0)} · ${formatY(activeCoord.value)} ${unit}`
-          : "Hover the line for an exact reading."}
-      </p>
     </div>
   );
 }

@@ -331,6 +331,7 @@ function MetricModal({
                 unit={metric.unit}
                 label={`${metric.label} trend`}
                 continuous={metric.id === "vo2"}
+                domain={metric.id === "sleep" ? [0, 100] : undefined}
               />
             ) : (
               <p className="td-muted text-sm leading-6">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { ChartScrubber } from "@/components/chart-scrubber";
 import { historyPosition, historyGap, type CategoryPoint, type HistoryPoint } from "@/lib/garmin/series";
 import { formatDay } from "@/lib/garmin/format";
 
@@ -9,13 +10,14 @@ export function MetricHistoryChart({
   unit,
   label = "Historical metric chart",
   continuous = false,
+  domain,
 }: {
   points: HistoryPoint[];
   unit?: string;
   label?: string;
   continuous?: boolean;
+  domain?: readonly [number, number];
 }) {
-  const [active, setActive] = useState<string | null>(null);
   const width = 640;
   const height = 260;
   const padTop = 16;
@@ -29,8 +31,8 @@ export function MetricHistoryChart({
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
     const padValue = (maxValue - minValue) * 0.08 || 1;
-    const lo = minValue - padValue;
-    const hi = maxValue + padValue;
+    const lo = domain?.[0] ?? minValue - padValue;
+    const hi = domain?.[1] ?? maxValue + padValue;
     const mapped = points.map((point) => {
       const x =
         points.length === 1
@@ -60,7 +62,7 @@ export function MetricHistoryChart({
       coords: mapped,
       path: segments.join(" "),
     };
-  }, [points, innerH, innerW, continuous]);
+  }, [points, innerH, innerW, continuous, domain]);
 
   if (points.length === 0) {
     return (
@@ -71,17 +73,22 @@ export function MetricHistoryChart({
   }
 
   const yTicks = [min, (min + max) / 2, max];
-  const activeCoord = coords.find((coord) => coord.point.iso === active);
 
   return (
-    <div className="td-history-chart">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="h-64 w-full"
-        role="img"
-        aria-label={label}
-        onPointerLeave={() => setActive(null)}
-      >
+    <ChartScrubber
+      points={coords.map((coord) => ({
+        id: coord.point.iso,
+        x: coord.x,
+        y: coord.y,
+        valueLabel: formatReading(coord.point.value, unit),
+        label: `${formatDay(coord.point.iso)} · ${formatReading(coord.point.value, unit)}`,
+      }))}
+      width={width}
+      height={height}
+      plotTop={padTop}
+      plotBottom={padTop + innerH}
+      label={label}
+    >
         {yTicks.map((tick) => {
           const y = padTop + (1 - (tick - min) / (max - min)) * innerH;
           return (
@@ -110,25 +117,8 @@ export function MetricHistoryChart({
             key={coord.point.iso}
             cx={coord.x}
             cy={coord.y}
-            r={active === coord.point.iso ? 4 : 2.5}
+            r={2.5}
             className="td-history-point"
-            onPointerEnter={() => setActive(coord.point.iso)}
-            onPointerDown={() => setActive(coord.point.iso)}
-            tabIndex={0}
-            role="button"
-            aria-label={`${formatDay(coord.point.iso)}: ${formatReading(coord.point.value, unit)}`}
-            onFocus={() => setActive(coord.point.iso)}
-          />
-        ))}
-        {coords.map((coord, index) => (
-          <rect
-            key={`hit-${coord.point.iso}`}
-            x={index === 0 ? padLeft : (coords[index - 1].x + coord.x) / 2}
-            y={padTop}
-            width={(index === coords.length - 1 ? width - padRight : (coord.x + coords[index + 1].x) / 2) - (index === 0 ? padLeft : (coords[index - 1].x + coord.x) / 2)}
-            height={innerH}
-            fill="transparent"
-            onPointerEnter={() => setActive(coord.point.iso)}
           />
         ))}
         <text x={padLeft} y={height - 12} className="td-history-axis">
@@ -142,19 +132,7 @@ export function MetricHistoryChart({
         >
           {formatDay(points[points.length - 1].iso, false)}
         </text>
-      </svg>
-      {activeCoord ? (
-        <p className="td-history-tooltip type-figure">
-          {formatDay(activeCoord.point.iso)} ·{" "}
-          {formatReading(activeCoord.point.value, unit)}
-        </p>
-      ) : (
-        <p className="td-muted text-[0.8125rem]">
-          {unit ? `${unit}. ` : ""}
-          Hover a point for the exact reading.
-        </p>
-      )}
-    </div>
+    </ChartScrubber>
   );
 }
 
