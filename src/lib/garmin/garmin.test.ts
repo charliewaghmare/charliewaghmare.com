@@ -46,6 +46,15 @@ test("pace rounds across minute boundaries and rejects non-finite inputs", () =>
   assert.equal(formatPace(1000, Infinity), null);
 });
 
+test("elapsed duration stays separate from recorded and moving durations for chart ranges", () => {
+  const [activity] = parseActivities([run(2, "2026-11-13 18:00:00", { elapsedDuration: 2100 })]);
+  assert.equal(activity.elapsedSeconds, 2100);
+  assert.equal(activity.durationSeconds, 1800);
+  assert.equal(activity.movingSeconds, 1500);
+  const [missing] = parseActivities([run(3, "2026-11-13 18:00:00")]);
+  assert.equal(missing.elapsedSeconds, null);
+});
+
 test("activity pagination requests more only when the window needs it and rejects malformed data", async () => {
   const offsets: number[] = [];
   const result = await activityWindow("2026-10-15", async (offset) => {

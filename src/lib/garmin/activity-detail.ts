@@ -80,7 +80,7 @@ export function splitsFromPayload(payload: unknown): ActivitySplit[] {
       numberValue(lap.duration) ??
       numberValue(lap.elapsedDuration) ??
       numberValue(lap.movingDuration);
-    if (distance === null || duration === null || distance < 50 || duration <= 0) return [];
+    if (distance === null || duration === null || distance < 0 || duration <= 0) return [];
     const heart =
       numberValue(lap.averageHR) ??
       numberValue(lap.averageHeartRate) ??
@@ -88,7 +88,7 @@ export function splitsFromPayload(payload: unknown): ActivitySplit[] {
     const lapIndex = numberValue(lap.lapIndex) ?? index + 1;
     return [
       {
-        label: Math.abs(distance - 1000) <= 30 ? `${lapIndex} km` : `Lap ${lapIndex}`,
+        label: `Lap ${lapIndex}`,
         distanceLabel: formatDistance(distance),
         timeLabel: formatDuration(duration),
         paceLabel: formatPace(distance, duration),

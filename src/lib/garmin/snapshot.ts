@@ -56,6 +56,7 @@ export type ActivityRow = {
 
 export type LatestActivity = ActivityRow & {
   distanceMeters: number | null;
+  elapsedSeconds: number | null;
   whenLabel: string;
   durationLabel: string;
   durationKind: "Elapsed" | "Duration";
@@ -279,6 +280,7 @@ function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActiv
   return {
     ...row,
     distanceMeters: activity.distanceMeters,
+    elapsedSeconds: activity.elapsedSeconds ?? activity.durationSeconds,
     whenLabel: clock ? `${row.dateLabel} · ${clock}` : row.dateLabel,
     durationLabel: row.timeLabel,
     durationKind: moving ? "Elapsed" : "Duration",

@@ -10,6 +10,7 @@ export type Activity = {
   startedAt: string;
   distanceMeters: number | null;
   durationSeconds: number | null;
+  elapsedSeconds?: number | null;
   maxHr?: number | null;
   elevationGain?: number | null;
   cadence?: number | null;
@@ -45,6 +46,7 @@ export function parseActivities(payload: unknown): Activity[] {
       startedAt: normalizedTime(record.startTimeGMT) ?? stringValue(record.startTimeLocal) ?? date,
       distanceMeters: nonnegative(numberValue(record.distance)),
       durationSeconds: nonnegative(numberValue(record.duration)),
+      elapsedSeconds: nonnegative(numberValue(record.elapsedDuration)),
       maxHr: positive(numberValue(record.maxHR)),
       elevationGain: positive(numberValue(record.elevationGain)),
       cadence: positive(numberValue(record.averageRunningCadenceInStepsPerMinute)),

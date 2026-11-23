@@ -11,10 +11,9 @@ import {
 import { ActivitySparkline, ActivityTraceChart } from "@/components/activity-trace-chart";
 import { RouteMap } from "@/components/route-map";
 import type { ActivitySample, ActivitySplit } from "@/lib/garmin/activity-detail";
-import { formatDistance } from "@/lib/garmin/format";
 import type { LatestActivity } from "@/lib/garmin/snapshot";
 
-type ChartId = "heart-rate" | "pace" | "elevation";
+type TabId = "heart-rate" | "pace" | "elevation" | "splits";
 
 export function LatestRunPanel({ activity }: { activity: LatestActivity | null }) {
   const [open, setOpen] = useState(false);
@@ -91,7 +90,7 @@ function TracePreview({ activity }: { activity: LatestActivity }) {
     return (
       <div className="mt-auto pt-6">
         <p className="td-label text-[0.75rem] font-medium">Heart rate</p>
-        <ActivitySparkline samples={activity.samples} read={(sample) => sample.heartRate} label="Heart rate over the run" />
+        <ActivitySparkline samples={activity.samples} elapsedSeconds={activity.elapsedSeconds} read={(sample) => sample.heartRate} label="Heart rate over the run" />
       </div>
     );
   }
@@ -101,6 +100,7 @@ function TracePreview({ activity }: { activity: LatestActivity }) {
         <p className="td-label text-[0.75rem] font-medium">Pace</p>
         <ActivitySparkline
           samples={activity.samples}
+          elapsedSeconds={activity.elapsedSeconds}
           read={(sample) => sample.paceSecondsPerKm}
           label="Pace over the run"
         />
@@ -128,9 +128,9 @@ export function ActivityModal({
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const charts = availableCharts(activity);
-  const [chart, setChart] = useState<ChartId>(charts[0] ?? "heart-rate");
-  const selected = charts.includes(chart) ? chart : charts[0];
+  const tabs = availableTabs(activity);
+  const [tab, setTab] = useState<TabId>("heart-rate");
+  const selected = tabs.includes(tab) ? tab : tabs[0];
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -239,26 +239,49 @@ export function ActivityModal({
               Try again
             </button>
           </div>
-        ) : charts.length > 0 && selected ? (
+        ) : (
           <div className="mt-8">
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Activity charts">
-              {charts.map((item) => (
+            <div
+              className="flex flex-wrap gap-2"
+              role="tablist"
+              aria-label="Run details"
+              onKeyDown={(event) => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const index = tabs.indexOf(selected);
+                const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+                  : (index + (event.key === "ArrowLeft" ? -1 : 1) + tabs.length) % tabs.length;
+                setTab(tabs[next]);
+                event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+              }}
+            >
+              {tabs.map((item) => (
                 <button
                   key={item}
+                  id={`${titleId}-tab-${item}`}
                   type="button"
                   role="tab"
                   aria-selected={selected === item}
+                  aria-controls={`${titleId}-panel`}
+                  tabIndex={selected === item ? 0 : -1}
                   className={["td-range-chip", selected === item ? "is-active" : ""].filter(Boolean).join(" ")}
-                  onClick={() => setChart(item)}
+                  onClick={() => setTab(item)}
                 >
-                  {chartLabel(item)}
+                  {tabLabel(item)}
                 </button>
               ))}
             </div>
-            <div className="mt-4">
+            <div
+              id={`${titleId}-panel`}
+              className="mt-4"
+              role="tabpanel"
+              aria-labelledby={`${titleId}-tab-${selected}`}
+              tabIndex={0}
+            >
               {selected === "heart-rate" ? (
                 <ActivityTraceChart
                   samples={activity.samples}
+                  elapsedSeconds={activity.elapsedSeconds}
                   read={(sample) => sample.heartRate}
                   formatY={(value) => `${Math.round(value)}`}
                   axisLabel="Heart rate in beats per minute"
@@ -269,6 +292,7 @@ export function ActivityModal({
               {selected === "pace" ? (
                 <ActivityTraceChart
                   samples={activity.samples}
+                  elapsedSeconds={activity.elapsedSeconds}
                   read={(sample) => sample.paceSecondsPerKm}
                   formatY={(value) => compactPace(value)}
                   axisLabel="Pace in minutes per kilometer. Slower pace is higher."
@@ -279,26 +303,20 @@ export function ActivityModal({
               {selected === "elevation" ? (
                 <ActivityTraceChart
                   samples={activity.samples}
+                  elapsedSeconds={activity.elapsedSeconds}
                   read={(sample) => sample.elevationMeters}
                   formatY={(value) => `${Math.round(value)}`}
-                  axisLabel="Elevation in meters against distance"
+                  axisLabel="Elevation in meters against elapsed time"
                   unit="m"
                   area
-                  note="Elevation against distance."
-                  xValue={(sample) => sample.distanceMeters}
-                  xMax={activity.distanceMeters}
-                  formatX={(meters) => formatDistance(meters)}
+                  note="Elevation against elapsed time."
                 />
               ) : null}
+              {selected === "splits" ? <Splits splits={activity.splits} /> : null}
             </div>
           </div>
-        ) : (
-          <p className="td-muted mt-8 text-sm leading-6">
-            Garmin didn’t include a heart-rate, pace, or elevation trace for this activity.
-          </p>
         )}
 
-        {activity.splits.length > 0 ? <Splits splits={activity.splits} /> : null}
         {activity.points.length > 1 ? (
           <div className="mt-8">
             <p className="td-label text-[0.75rem] font-medium">Route</p>
@@ -311,47 +329,48 @@ export function ActivityModal({
 }
 
 function Splits({ splits }: { splits: ActivitySplit[] }) {
+  if (splits.length === 0) {
+    return <p className="td-muted text-sm leading-6">No lap data is available for this run.</p>;
+  }
   return (
-    <div className="mt-8">
-      <p className="td-label text-[0.75rem] font-medium">Splits</p>
-      <div className="mt-3 max-h-64 overflow-auto">
-        <table className="w-full min-w-[28rem] text-left text-sm">
-          <thead className="td-label text-[0.6875rem] uppercase tracking-[0.08em]">
-            <tr>
-              <th className="py-2 pr-3 font-medium">Split</th>
-              <th className="py-2 pr-3 font-medium">Distance</th>
-              <th className="py-2 pr-3 font-medium">Time</th>
-              <th className="py-2 pr-3 font-medium">Pace</th>
-              <th className="py-2 font-medium">Avg HR</th>
+    <div className="max-h-80 overflow-auto">
+      <table className="w-full min-w-[28rem] text-left text-sm">
+        <caption className="sr-only">Run lap data</caption>
+        <thead className="td-label text-[0.6875rem] uppercase tracking-[0.08em]">
+          <tr>
+            <th className="py-2 pr-3 font-medium">Lap</th>
+            <th className="py-2 pr-3 font-medium">Distance</th>
+            <th className="py-2 pr-3 font-medium">Time</th>
+            <th className="py-2 pr-3 font-medium">Pace</th>
+            <th className="py-2 font-medium">Avg HR</th>
+          </tr>
+        </thead>
+        <tbody>
+          {splits.map((split) => (
+            <tr key={split.label} className="border-t border-[var(--td-border-subtle)]">
+              <td className="py-2 pr-3">{split.label}</td>
+              <td className="type-figure py-2 pr-3">{split.distanceLabel}</td>
+              <td className="type-figure py-2 pr-3">{split.timeLabel}</td>
+              <td className="type-figure py-2 pr-3">{split.paceLabel ?? "—"}</td>
+              <td className="type-figure py-2">{split.heartRateLabel ?? "—"}</td>
             </tr>
-          </thead>
-          <tbody>
-            {splits.map((split) => (
-              <tr key={split.label} className="border-t border-[var(--td-border-subtle)]">
-                <td className="py-2 pr-3">{split.label}</td>
-                <td className="type-figure py-2 pr-3">{split.distanceLabel}</td>
-                <td className="type-figure py-2 pr-3">{split.timeLabel}</td>
-                <td className="type-figure py-2 pr-3">{split.paceLabel ?? "—"}</td>
-                <td className="type-figure py-2">{split.heartRateLabel ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function availableCharts(activity: LatestActivity): ChartId[] {
-  const charts: ChartId[] = [];
+function availableTabs(activity: LatestActivity): TabId[] {
+  const charts: TabId[] = [];
   if (count(activity.samples, (sample) => sample.heartRate) >= 8) charts.push("heart-rate");
   if (count(activity.samples, (sample) => sample.paceSecondsPerKm) >= 8) charts.push("pace");
   const elevation = activity.samples.filter(
-    (sample) => sample.elevationMeters !== null && sample.distanceMeters !== null,
+    (sample) => sample.elevationMeters !== null,
   );
   const heights = elevation.flatMap((sample) => (sample.elevationMeters === null ? [] : [sample.elevationMeters]));
   if (heights.length >= 8 && Math.max(...heights) - Math.min(...heights) > 3) charts.push("elevation");
-  return charts;
+  return [...charts, "splits"];
 }
 
 function count(samples: ActivitySample[], read: (sample: ActivitySample) => number | null): number {
@@ -365,9 +384,10 @@ function compactPace(seconds: number): string {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
-function chartLabel(chart: ChartId): string {
+function tabLabel(chart: TabId): string {
   if (chart === "heart-rate") return "Heart rate";
   if (chart === "pace") return "Pace";
+  if (chart === "splits") return "Splits";
   return "Elevation";
 }
 

@@ -13,9 +13,7 @@ export function ActivityTraceChart({
   unit,
   area = false,
   note,
-  xValue,
-  xMax,
-  formatX = formatDuration,
+  elapsedSeconds,
 }: {
   samples: ActivitySample[];
   read: (sample: ActivitySample) => number | null;
@@ -24,9 +22,7 @@ export function ActivityTraceChart({
   unit: string;
   area?: boolean;
   note: string;
-  xValue?: (sample: ActivitySample) => number | null;
-  xMax?: number | null;
-  formatX?: (value: number) => string;
+  elapsedSeconds?: number | null;
 }) {
   const width = 640;
   const height = 260;
@@ -47,36 +43,31 @@ export function ActivityTraceChart({
     const padValue = (maxValue - minValue) * 0.08 || 1;
     const lo = minValue - padValue;
     const hi = maxValue + padValue;
-    const xRead = xValue ?? ((sample: ActivitySample) => sample.elapsedSeconds);
-    const xValues = samples.flatMap((sample) => {
-      const value = xRead(sample);
-      return value === null ? [] : [value];
-    });
     const xStart = 0;
-    const xEnd = Math.max(xMax ?? 0, ...xValues);
+    const xEnd = Math.max(elapsedSeconds ?? 0, ...samples.map((sample) => sample.elapsedSeconds));
     const xSpan = xEnd - xStart || 1;
     const coords = samples.map((sample) => {
       const value = read(sample);
-      const xRaw = xRead(sample);
-      const x = xRaw === null ? null : padLeft + ((xRaw - xStart) / xSpan) * innerW;
+      const xRaw = sample.elapsedSeconds;
+      const x = padLeft + ((xRaw - xStart) / xSpan) * innerW;
       const y = value === null ? null : padTop + (1 - (value - lo) / (hi - lo)) * innerH;
       return { x, y, sample, value, xRaw };
     });
     return { lo, hi, coords, xStart, xEnd };
-  }, [samples, read, xValue, xMax, innerH, innerW]);
+  }, [samples, read, elapsedSeconds, innerH, innerW]);
 
   if (!plotted) {
     return <p className="td-muted text-sm leading-6">Not enough samples for this chart.</p>;
   }
 
   const { lo, hi, coords, xStart, xEnd } = plotted;
-  const line = pathFrom(coords.map((coord) => ({ x: coord.x ?? 0, y: coord.x === null || coord.y === null ? null : coord.y })));
-  const first = coords.find((coord) => coord.y !== null && coord.x !== null);
-  const last = [...coords].reverse().find((coord) => coord.y !== null && coord.x !== null);
+  const line = pathFrom(coords);
+  const first = coords.find((coord) => coord.y !== null);
+  const last = [...coords].reverse().find((coord) => coord.y !== null);
   const base = padTop + innerH;
   const areaPath =
     area && first && last && line
-      ? `${line} L${last.x ?? 0} ${base} L${first.x ?? 0} ${base} Z`
+      ? `${line} L${last.x} ${base} L${first.x} ${base} Z`
       : null;
   const yTicks = [lo, (lo + hi) / 2, hi];
 
@@ -84,12 +75,12 @@ export function ActivityTraceChart({
     <div>
       <ChartScrubber
         points={coords.flatMap((coord, index) =>
-          coord.x === null || coord.y === null || coord.value === null || coord.xRaw === null ? [] : [{
+          coord.y === null || coord.value === null ? [] : [{
             id: String(index),
             x: coord.x,
             y: coord.y,
             valueLabel: `${formatY(coord.value)} ${unit}`,
-            label: `${formatX(coord.xRaw)} · ${formatY(coord.value)} ${unit}`,
+            label: `${formatDuration(coord.xRaw)} · ${formatY(coord.value)} ${unit}`,
           }],
         )}
         width={width}
@@ -115,10 +106,10 @@ export function ActivityTraceChart({
         {areaPath ? <path d={areaPath} className="td-history-area" /> : null}
         <path d={line} className="td-history-line" fill="none" />
         <text x={padLeft} y={height - 12} className="td-history-axis">
-          {formatX(xStart)}
+          {formatDuration(xStart)}
         </text>
         <text x={width - padRight} y={height - 12} textAnchor="end" className="td-history-axis">
-          {formatX(xEnd)}
+          {formatDuration(xEnd)}
         </text>
       </ChartScrubber>
       <p className="td-muted mt-2 text-xs leading-5">{note}</p>
@@ -130,10 +121,12 @@ export function ActivitySparkline({
   samples,
   read,
   label,
+  elapsedSeconds,
 }: {
   samples: ActivitySample[];
   read: (sample: ActivitySample) => number | null;
   label: string;
+  elapsedSeconds?: number | null;
 }) {
   const values = samples.flatMap((sample) => {
     const value = read(sample);
@@ -143,7 +136,7 @@ export function ActivitySparkline({
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1;
-  const end = samples[samples.length - 1]?.elapsedSeconds || 1;
+  const end = Math.max(elapsedSeconds ?? 0, ...samples.map((sample) => sample.elapsedSeconds)) || 1;
   const width = 320;
   const height = 72;
   const path = sparklinePath(samples, read, min, span, end, width, height);
