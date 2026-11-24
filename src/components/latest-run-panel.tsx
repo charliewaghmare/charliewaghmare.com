@@ -34,7 +34,7 @@ export function LatestRunPanel({ activity }: { activity: LatestActivity | null }
       <div className="flex flex-wrap items-start justify-between gap-3">
         <button type="button" className="td-run-card min-w-0 flex-1 text-left" onClick={openModal} disabled={!activity}>
           <p className="td-overline tracking-[0.12em]">Latest run</p>
-          <h3 className="type-display td-text mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
+          <h3 className="td-featured-title type-display td-text mt-2">
             {activity?.name ?? "No recent run"}
           </h3>
           {activity ? (
@@ -58,13 +58,13 @@ export function LatestRunPanel({ activity }: { activity: LatestActivity | null }
           <div className="grid grid-cols-2 gap-6">
             <div>
               <p className="td-label text-[0.75rem] font-medium">Distance</p>
-              <p className="type-metric mt-1 text-[2rem] leading-none sm:text-[2.25rem]">
+              <p className="type-metric mt-1 text-[3rem] leading-none sm:text-[3.5rem]">
                 <WithUnits text={activity.distanceLabel} />
               </p>
             </div>
             <div>
               <p className="td-label text-[0.75rem] font-medium">Avg pace</p>
-              <p className="type-metric mt-1 text-[2rem] leading-none sm:text-[2.25rem]">
+              <p className="type-metric mt-1 text-[3rem] leading-none sm:text-[3.5rem]">
                 <WithUnits text={activity.paceLabel ?? "—"} />
               </p>
             </div>

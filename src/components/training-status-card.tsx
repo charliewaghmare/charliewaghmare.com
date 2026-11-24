@@ -16,16 +16,13 @@ export function TrainingStatusCard({ metric }: { metric: DashboardMetric }) {
 
   return (
     <article className="td-card flex min-h-[8.5rem] flex-col px-4 py-4">
-      <p className="td-label text-[0.8125rem] font-medium leading-5">{metric.label}</p>
-      <h3 className="type-metric mt-2 text-[1.375rem] leading-[1.15] sm:text-[1.5rem]">
+      <p className="td-label text-sm font-medium leading-5">{metric.label}</p>
+      <h3 className="td-status-name type-metric mt-auto pt-8 leading-[1.1]">
         {status?.label ?? (cleanValue || "—")}
       </h3>
-      <div
-        className="td-status-bar mt-4"
-        style={{ color: status?.color ?? "var(--td-muted)" }}
-        aria-hidden="true"
-      />
-      <p className="td-muted mt-3 text-[0.8125rem] leading-5">{metric.explanation}</p>
+      <div className="td-status-track mt-4" aria-hidden="true">
+        <div className="td-status-bar" style={{ color: status?.color ?? "var(--td-muted)" }} />
+      </div>
     </article>
   );
 }

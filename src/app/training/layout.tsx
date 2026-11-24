@@ -1,23 +1,21 @@
-import { Geist_Mono, Playfair_Display } from "next/font/google";
+import { Barlow_Condensed, IBM_Plex_Sans } from "next/font/google";
 
-const playfair = Playfair_Display({
+const display = Barlow_Condensed({
   subsets: ["latin"],
-  weight: "500",
+  weight: ["600", "700"],
   display: "swap",
-  adjustFontFallback: true,
-  variable: "--font-playfair",
+  variable: "--font-training-display",
 });
 
-const geistMono = Geist_Mono({
+const body = IBM_Plex_Sans({
   subsets: ["latin"],
   display: "swap",
-  adjustFontFallback: true,
-  variable: "--font-geist-mono",
+  variable: "--font-training-body",
 });
 
 export default function TrainingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${playfair.variable} ${geistMono.variable} training-type training-theme`}>
+    <div className={`${display.variable} ${body.variable} training-type training-theme training-meet`}>
       {children}
     </div>
   );

@@ -77,7 +77,7 @@ export function MetricExplorer({
         <section className="mt-10" aria-labelledby="primary-metrics-heading">
           <h2
             id="primary-metrics-heading"
-            className="type-section td-text text-[1.125rem] leading-tight sm:text-[1.25rem]"
+            className="td-section-heading type-section td-text"
           >
             Training and performance
           </h2>
@@ -102,7 +102,7 @@ export function MetricExplorer({
         <section className="mt-12" aria-labelledby="secondary-metrics-heading">
           <h2
             id="secondary-metrics-heading"
-            className="type-section td-text text-[1.125rem] leading-tight sm:text-[1.25rem]"
+            className="td-section-heading type-section td-text"
           >
             Health
           </h2>
@@ -151,19 +151,19 @@ function MetricCardButton({
         .join(" ")}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="td-label text-[0.8125rem] font-medium leading-5">
+        <p className="td-label text-sm font-medium leading-5">
           {metric.label}
         </p>
         <span className="td-expand-icon" aria-hidden="true">
-          ⌝
+          +
         </span>
       </div>
       <p
         className={[
           "type-metric mt-2 leading-[1.15]",
           textual
-            ? "text-[1.375rem] sm:text-[1.5rem]"
-            : "text-[1.75rem] sm:text-[1.875rem]",
+            ? "text-[2rem] sm:text-[2.25rem]"
+            : "text-[3.25rem] sm:text-[3.75rem]",
         ].join(" ")}
       >
         <WithUnits text={metric.value} />

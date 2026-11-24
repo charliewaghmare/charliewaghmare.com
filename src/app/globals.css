@@ -533,6 +533,157 @@ code.text-code {
   }
 }
 
+/* Meet programme — applied only by the /training layout. */
+.training-theme.training-meet {
+  --td-bg: #f5f6f8;
+  --td-surface: #ffffff;
+  --td-elevated: #f4eff1;
+  --td-accent: #8e2638;
+  --td-accent-hover: #601a29;
+  --td-chart-highlight: #c04851;
+  --td-balance-low: #31814c;
+  --td-balance-high: #b1810a;
+  --td-balance-anaerobic: #bf3d43;
+  --td-guide: #626773;
+  --td-text: #20242b;
+  --td-muted: #626773;
+  --td-border: #c3c7cd;
+  --td-border-subtle: #dce0e5;
+  --td-radius: 0.1875rem;
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
+  background-image: none;
+  color-scheme: light;
+}
+
+.training-meet .type-display,
+.training-meet .type-metric {
+  font-family: var(--font-training-display), "Arial Narrow", sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.training-meet .type-section,
+.training-meet .type-figure,
+.training-meet .type-unit,
+.training-meet .type-unit-inline {
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.training-meet .type-figure {
+  letter-spacing: -0.015em;
+}
+
+.training-meet .td-page-header {
+  border-bottom: 2px solid var(--td-text);
+}
+
+.training-meet .td-page-title {
+  font-size: clamp(4.5rem, 10vw, 7rem);
+  line-height: 0.9;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+}
+
+.training-meet .td-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--font-training-display), "Arial Narrow", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.training-meet .td-section-heading::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--td-border);
+}
+
+.training-meet .td-featured-title {
+  font-size: 2.25rem;
+  line-height: 1.05;
+}
+
+.training-meet .td-expand-icon {
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.training-meet .td-card {
+  border-top: 2px solid var(--td-text);
+}
+
+.training-meet .td-overline {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--td-muted);
+}
+
+.training-meet .td-status-name {
+  font-size: clamp(1.5rem, 3vw, 2.75rem);
+  overflow-wrap: anywhere;
+}
+
+.training-meet .td-status-track {
+  padding: 0.625rem;
+  border-radius: 0.125rem;
+  background: var(--td-text);
+}
+
+.training-meet .td-status-bar {
+  border-radius: 0;
+}
+
+.training-meet .td-run-sparkline {
+  color: var(--td-accent);
+}
+
+.training-meet .td-distance-tooltip {
+  border-color: var(--td-text);
+  border-radius: 0.125rem;
+  background: var(--td-text);
+  color: var(--td-surface);
+}
+
+.training-meet .td-activity-row {
+  border-radius: 0.125rem;
+}
+
+.training-meet .td-modal-root {
+  background: color-mix(in srgb, #20242b 55%, transparent);
+}
+
+.training-meet .td-modal {
+  border-top: 3px solid var(--td-text);
+  border-radius: var(--td-radius);
+  background: var(--td-surface);
+  box-shadow: 0 16px 48px #20242b26;
+}
+
+.training-meet .td-modal-close,
+.training-meet .td-range-chip {
+  border-radius: 0.125rem;
+}
+
+.training-meet .td-range-chip.is-active {
+  border-color: var(--td-text);
+  background: var(--td-text);
+  color: var(--td-surface);
+}
+
+.training-meet .td-range-chip:focus-visible,
+.training-meet .td-modal-close:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 3px;
+}
+
 .jobs-theme .jd-tab,
 .jobs-theme .jd-button,
 .jobs-theme .jd-input,

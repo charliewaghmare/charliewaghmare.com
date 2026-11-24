@@ -28,7 +28,7 @@ export function TrainingView({
 
   return (
     <>
-      <header className="td-divider border-b pb-8">
+      <header className="td-page-header td-divider border-b pb-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="td-overline">
@@ -38,11 +38,11 @@ export function TrainingView({
               <span aria-hidden="true"> / </span>
               <span>Training</span>
             </p>
-            <h1 className="type-display td-text mt-3 text-[2.125rem] leading-[1.1] sm:text-[3rem]">
+            <h1 className="td-page-title type-display td-text mt-4">
               Training
             </h1>
             <p className="td-muted mt-3 max-w-xl text-sm font-normal leading-6">
-              A live look at the numbers behind the miles.
+              Running, recovery, and recent sessions.
             </p>
           </div>
           <div className="shrink-0 text-left lg:text-right">
@@ -104,7 +104,7 @@ export function TrainingView({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2
             id="runs-heading"
-            className="type-display td-text text-[1.375rem] leading-[1.15] sm:text-[1.625rem]"
+            className="td-section-heading type-display td-text flex-1"
           >
             Runs
           </h2>
@@ -129,7 +129,7 @@ export function TrainingView({
       <section className="td-divider mt-14 border-t pt-10" aria-labelledby="bests-heading">
         <h2
           id="bests-heading"
-          className="type-display td-text text-[1.375rem] leading-[1.15] sm:text-[1.625rem]"
+          className="td-section-heading type-display td-text"
         >
           Personal bests
         </h2>
@@ -149,7 +149,7 @@ export function TrainingView({
                     {best.note ? ` · ${best.note}` : ""}
                   </p>
                 </div>
-                <p className="type-figure td-text text-[0.9375rem] font-medium">
+                <p className="type-metric td-text text-[1.75rem] leading-none sm:text-right">
                   <WithUnits text={best.mark} unitClassName="type-unit-inline" />
                 </p>
               </li>
@@ -178,7 +178,7 @@ function TrainingOverviewPanel({
   return (
     <article className="td-card flex min-h-[20rem] flex-col p-5 sm:p-6">
       <p className="td-overline tracking-[0.12em]">Training overview</p>
-      <h3 className="type-display td-text mt-2 text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">
+      <h3 className="td-featured-title type-display td-text mt-2">
         Last 30 days
       </h3>
       <p className="type-figure td-muted mt-3 text-sm">
