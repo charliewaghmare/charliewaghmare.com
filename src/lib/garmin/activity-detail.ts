@@ -17,6 +17,7 @@ export type ActivitySplit = {
 };
 
 type Descriptor = { key: string; index: number; scale: number };
+type MetricRow = Array<number | null>;
 
 export function samplesFromDetails(
   payload: unknown,
@@ -127,13 +128,23 @@ export function deriveKilometerSplits(samples: ActivitySample[]): ActivitySplit[
 }
 
 export function downsampleSamples(samples: ActivitySample[], max = 220): ActivitySample[] {
+  if (!Number.isInteger(max) || max < 2) throw new RangeError("At least two samples are required.");
   if (samples.length <= max) return samples;
-  const picked: ActivitySample[] = [];
-  const step = (samples.length - 1) / (max - 1);
-  for (let index = 0; index < max; index += 1) {
-    picked.push(samples[Math.round(index * step)]);
+  const picked = new Set([0, samples.length - 1]);
+  // Each sensor can start/stop independently. Retain its recorded endpoints so
+  // a uniform sampling grid doesn't trim a valid tail next to a missing reading.
+  for (const field of ["heartRate", "paceSecondsPerKm", "elevationMeters"] as const) {
+    const first = samples.findIndex((sample) => sample[field] !== null);
+    const last = samples.findLastIndex((sample) => sample[field] !== null);
+    for (const index of [first, last]) {
+      if (index >= 0 && picked.size < max) picked.add(index);
+    }
   }
-  return picked;
+  const remaining = max - picked.size;
+  for (let index = 1; index <= remaining; index += 1) {
+    picked.add(Math.round(index * (samples.length - 1) / (remaining + 1)));
+  }
+  return [...picked].sort((a, b) => a - b).map((index) => samples[index]);
 }
 
 function heartRateBetween(
@@ -185,17 +196,20 @@ function findDescriptors(payload: unknown): Descriptor[] {
   return found;
 }
 
-function findMetricRows(payload: unknown): number[][] {
-  let best: number[][] = [];
+function findMetricRows(payload: unknown): MetricRow[] {
+  let best: MetricRow[] = [];
   walk(payload, (value) => {
     if (!Array.isArray(value) || value.length < 2) return;
     const rows = value.flatMap((item) => {
       const record = asRecord(item);
       const metrics = record?.metrics ?? item;
-      if (!Array.isArray(metrics) || metrics.length < 2) return [];
+      if (!Array.isArray(metrics) || metrics.length === 0) return [];
       const numbers = metrics.map(numberValue);
-      if (numbers.some((entry) => entry === null)) return [];
-      return [numbers as number[]];
+      // Garmin includes nullable optional columns (for example, performance
+      // condition during warmup). Keep the timestamp and every available sensor;
+      // dropping a row for an unrelated null also shifts the whole run's origin.
+      if (numbers.every((entry) => entry === null)) return [];
+      return [numbers];
     });
     if (rows.length > best.length) best = rows;
   });
@@ -226,7 +240,7 @@ function descriptor(descriptors: Descriptor[], keys: string[]): Descriptor | nul
   return descriptors.find((item) => keys.includes(item.key)) ?? null;
 }
 
-function scaled(metrics: number[], column: Descriptor): number | null {
+function scaled(metrics: MetricRow, column: Descriptor): number | null {
   const value = metrics[column.index];
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return value * column.scale;
