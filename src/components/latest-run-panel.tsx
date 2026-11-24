@@ -8,6 +8,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import Link from "next/link";
 import { ActivitySparkline, ActivityTraceChart } from "@/components/activity-trace-chart";
 import { RouteMap } from "@/components/route-map";
 import type { ActivitySample, ActivitySplit } from "@/lib/garmin/activity-detail";
@@ -118,12 +119,14 @@ export function ActivityModal({
   loading = false,
   error = null,
   onRetry,
+  showTrainingLink = false,
 }: {
   activity: LatestActivity;
   onClose: () => void;
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  showTrainingLink?: boolean;
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -212,6 +215,14 @@ export function ActivityModal({
             </button>
           </div>
         </div>
+
+        {showTrainingLink ? (
+          <p className="mt-4 text-sm">
+            <Link href="/training" className="td-link font-medium underline">
+              Click here to view my training
+            </Link>
+          </p>
+        ) : null}
 
         <dl className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-4">
           <ModalStat label="Distance" value={activity.distanceLabel} />

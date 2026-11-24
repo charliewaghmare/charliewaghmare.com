@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Barlow_Condensed, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const display = Barlow_Condensed({
   subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+  variable: "--font-training-display",
+});
+
+const body = IBM_Plex_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-training-body",
 });
 
 const siteName = "Charlie Waghmare";
@@ -63,9 +71,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} h-full bg-stone-50 antialiased`}
+      className={`${display.variable} ${body.variable} h-full bg-[#f5f6f8] antialiased`}
     >
-      <body className="min-h-full bg-stone-50 font-sans text-stone-900">
+      <body className="training-type training-theme training-meet min-h-full">
         {children}
       </body>
     </html>

@@ -145,7 +145,7 @@ export function JobsDashboard({
 
   return (
     <div>
-      <header className="td-divider border-b pb-8">
+      <header className="td-page-header td-divider border-b pb-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="td-overline">
@@ -155,7 +155,7 @@ export function JobsDashboard({
               <span aria-hidden="true"> / </span>
               <span>Jobs</span>
             </p>
-            <h1 className="type-display td-text mt-3 text-[2.125rem] leading-[1.1] sm:text-[3rem]">
+            <h1 className="td-page-title type-display td-text mt-4">
               Job Discovery
             </h1>
             <p className="td-muted mt-3 max-w-xl text-sm leading-6">

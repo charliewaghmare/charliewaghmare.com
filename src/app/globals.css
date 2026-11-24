@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-training-body);
 }
 
 html {
@@ -20,21 +20,21 @@ code.text-code {
   font-size: 0.92em;
 }
 
-/* Training page only. Other routes never receive these variables. */
+/* Shared typography and dashboard components. */
 .training-type .type-display {
-  font-family: var(--font-playfair), "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
-  font-weight: 500;
+  font-family: var(--font-training-display), "Arial Narrow", sans-serif;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
 .training-type .type-section {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
   font-weight: 600;
   letter-spacing: 0;
 }
 
 .training-type .type-metric {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-training-display), "Arial Narrow", sans-serif;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -42,13 +42,13 @@ code.text-code {
 }
 
 .training-type .type-figure {
-  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
 
 .training-type .type-unit {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
   font-size: 0.62em;
   font-weight: 500;
   letter-spacing: 0;
@@ -56,7 +56,7 @@ code.text-code {
 }
 
 .training-type .type-unit-inline {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-training-body), "Helvetica Neue", Arial, sans-serif;
   font-size: 0.85em;
   font-weight: 400;
   letter-spacing: 0;
@@ -64,12 +64,12 @@ code.text-code {
 }
 
 .training-type code.text-code {
-  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   background: color-mix(in srgb, var(--td-accent) 12%, transparent);
   color: var(--td-text);
 }
 
-/* Slate + Electric — scoped to /training */
+/* Shared dashboard tokens; the meet programme below defines the site palette. */
 .training-theme {
   --td-bg: #0d1117;
   --td-surface: #18232e;
@@ -533,7 +533,7 @@ code.text-code {
   }
 }
 
-/* Meet programme — applied only by the /training layout. */
+/* Meet programme — shared by the home page, jobs and training. */
 .training-theme.training-meet {
   --td-bg: #f5f6f8;
   --td-surface: #ffffff;
@@ -681,6 +681,34 @@ code.text-code {
   outline-offset: 3px;
 }
 
+.home-button {
+  border: 1px solid var(--td-border);
+  border-radius: var(--td-radius);
+  color: var(--td-text);
+  transition: background-color var(--td-transition), border-color var(--td-transition);
+}
+
+.home-button:hover {
+  border-color: var(--td-accent);
+  background: var(--td-elevated);
+}
+
+.home-button-primary {
+  border-color: var(--td-accent);
+  background: var(--td-accent);
+  color: var(--td-surface);
+}
+
+.home-button-primary:hover {
+  border-color: var(--td-accent-hover);
+  background: var(--td-accent-hover);
+}
+
+.home-button:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 3px;
+}
+
 .jobs-theme .jd-tab,
 .jobs-theme .jd-button,
 .jobs-theme .jd-input,
@@ -696,7 +724,7 @@ code.text-code {
 .jobs-theme .jd-button,
 .jobs-theme .jd-input {
   border: 1px solid var(--td-border);
-  border-radius: 999px;
+  border-radius: var(--td-radius);
   background: transparent;
   color: var(--td-text);
   padding: 0.45rem 0.9rem;
@@ -706,7 +734,7 @@ code.text-code {
 .jobs-theme .jd-input {
   display: block;
   width: 100%;
-  border-radius: 0.7rem;
+  border-radius: var(--td-radius);
   background: var(--td-bg);
   padding: 0.6rem 0.75rem;
 }
@@ -726,6 +754,14 @@ code.text-code {
 .jobs-theme .jd-input:focus-visible {
   border-color: var(--td-accent);
   outline: none;
+}
+
+.jobs-theme .jd-tab:focus-visible,
+.jobs-theme .jd-button:focus-visible,
+.jobs-theme .jd-expand:focus-visible,
+.jobs-theme .jd-input:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 3px;
 }
 
 .jobs-theme .jd-button:disabled {
@@ -750,7 +786,7 @@ code.text-code {
 
 .jobs-theme .jd-tag {
   border: 1px solid var(--td-border);
-  border-radius: 999px;
+  border-radius: var(--td-radius);
   color: var(--td-muted);
   padding: 0.15rem 0.55rem;
   font-size: 0.75rem;
@@ -787,7 +823,7 @@ code.text-code {
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--td-border);
-  border-radius: 0.7rem;
+  border-radius: var(--td-radius);
   background: var(--td-elevated);
   color: var(--td-accent);
   font-size: 0.95rem;
@@ -806,6 +842,7 @@ code.text-code {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .home-button,
   .jobs-theme .jd-tab,
   .jobs-theme .jd-button,
   .jobs-theme .jd-input,

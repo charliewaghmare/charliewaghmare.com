@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import {
   LatestRunCard,
@@ -13,38 +12,25 @@ import { hasResumePdf } from "@/lib/resume";
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-xl px-6 py-16 sm:py-24">
-      <header>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+    <main className="mx-auto w-full max-w-5xl px-6 py-16 sm:py-24">
+      <header className="td-page-header pb-8">
+        <h1 className="td-page-title type-display td-text">
           {site.name}
         </h1>
-        <p className="mt-3 flex items-center gap-x-3 text-sm text-stone-500">
-          <span>{site.domain}</span>
-          <Link
-            href="/training"
-            className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500"
-          >
-            Training
-          </Link>
-          <Link
-            href="/jobs"
-            className="underline decoration-stone-300 underline-offset-4 hover:decoration-stone-500"
-          >
-            Jobs
-          </Link>
-        </p>
+        <p className="td-muted mt-4 text-sm">{site.domain}</p>
       </header>
 
-      <aside className="mt-8 xl:fixed xl:right-6 xl:top-6 xl:z-20 xl:mt-0 xl:w-72">
-        <Suspense fallback={<LatestRunFallback />}>
-          <LatestRun />
-        </Suspense>
-      </aside>
-
-      <div className="mt-14 space-y-12">
-        <About about={site.about} />
-        <ResumeSection available={hasResumePdf()} />
-        <Projects projects={site.projects} />
+      <div className="mt-10 grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <aside className="min-w-0 lg:order-2" aria-label="Latest run">
+          <Suspense fallback={<LatestRunFallback />}>
+            <LatestRun />
+          </Suspense>
+        </aside>
+        <div className="min-w-0 space-y-12 lg:order-1">
+          <About about={site.about} />
+          <ResumeSection available={hasResumePdf()} />
+          <Projects projects={site.projects} />
+        </div>
       </div>
     </main>
   );
@@ -52,5 +38,5 @@ export default function Home() {
 
 async function LatestRun() {
   const snapshot = await getTrainingSnapshot();
-  return <LatestRunCard snapshot={snapshot} />;
+  return <LatestRunCard activity={snapshot.latestActivity} sample={snapshot.source === "sample"} />;
 }
