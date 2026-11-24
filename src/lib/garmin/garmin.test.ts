@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseActivities, dayBars, paceLabelFor, toRow, toRunCard, activityWindow } from "./activities";
 import { formatPace, vancouverToday } from "./format";
-import { latestRestingHr, latestHrv, latestReadiness, latestSleepScore, trainingLoads, loadBalance, buildMetrics } from "./extract";
+import { latestRestingHr, latestHrv, latestReadiness, latestSleepScore, latestLactateThreshold, trainingLoads, loadBalance, buildMetrics } from "./extract";
 import { buildDashboardMetrics, filterSeries, readinessSeries, sleepScoreSeries, historyPosition, historyGap, isoFrom, vo2Series } from "./series";
 import { decodePolyline } from "./polyline";
 
@@ -88,6 +88,28 @@ test("missing metrics are not zero and weekly load is not substituted for acute 
   assert.deepEqual(trainingLoads({ weeklyTrainingLoad: 123 }), { acute: null, chronic: null, ratio: null });
   const metrics = buildMetrics({ rhr: null, hrv: null, vo2: null, status: null, dailyStatus: null, balance: null, readiness: null, sleep: [] });
   assert.ok(metrics.every((metric) => metric.value === "—"));
+});
+
+test("lactate threshold uses the latest running readings and converts Garmin speed to pace", () => {
+  const payload = [
+    { calendarDate: "2026-10-01", sport: "RUNNING", hearRate: 180, speed: 3.5 },
+    { calendarDate: "2026-11-21", sport: "RUNNING", hearRate: "176" },
+    { calendarDate: "2026-11-22", sport: "RUNNING", speed: "4" },
+    { calendarDate: "2026-11-23", sport: "CYCLING", hearRate: 190, speed: 8 },
+  ];
+  const threshold = latestLactateThreshold(payload);
+  assert.deepEqual(threshold, { heartRate: 176, paceSecondsPerKm: 250 });
+  assert.equal(formatPace(1000, threshold.paceSecondsPerKm!), "4:10 /km");
+  const metrics = buildMetrics({ rhr: null, hrv: null, vo2: null, status: null, dailyStatus: null, balance: null, readiness: null, sleep: [], lactateThreshold: payload });
+  const dashboard = buildDashboardMetrics({ end: "2026-11-23", windowLabel: "30 days", metrics,
+    series: { rhr: [], hrv: [], vo2: [], readiness: [], sleep: [], load: [], status: [] } });
+  assert.deepEqual(dashboard.find((metric) => metric.id === "status")?.lactateThreshold, threshold);
+});
+
+test("missing or invalid lactate threshold readings remain unavailable", () => {
+  assert.deepEqual(latestLactateThreshold(null), { heartRate: null, paceSecondsPerKm: null });
+  assert.deepEqual(latestLactateThreshold([{ hearRate: 0, speed: -1 }, { heartRate: "NaN", speed: Infinity }]), { heartRate: null, paceSecondsPerKm: null });
+  assert.deepEqual(latestLactateThreshold({ heartRate: 175 }), { heartRate: 175, paceSecondsPerKm: null });
 });
 
 test("training balance keeps Garmin target bounds with the primary device's loads through the dashboard", () => {

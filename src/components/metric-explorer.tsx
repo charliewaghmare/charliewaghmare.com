@@ -135,6 +135,7 @@ function MetricCardButton({
   className?: string;
 }) {
   const textual = /[A-Za-z]{3,}/.test(metric.value.replace(/[^A-Za-z]/g, ""));
+  const health = ["hrv", "rhr", "sleep"].includes(metric.id);
   const spark =
     metric.kind === "numeric" ? sparklinePoints(metric.series, 30) : [];
 
@@ -161,7 +162,9 @@ function MetricCardButton({
       <p
         className={[
           "type-metric mt-2 leading-[1.15]",
-          textual
+          health
+            ? "td-health-value text-[2.625rem] sm:text-[3rem]"
+            : textual
             ? "text-[2rem] sm:text-[2.25rem]"
             : "text-[3.25rem] sm:text-[3.75rem]",
         ].join(" ")}

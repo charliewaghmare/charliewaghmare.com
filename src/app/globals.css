@@ -631,14 +631,11 @@ code.text-code {
   overflow-wrap: anywhere;
 }
 
-.training-meet .td-status-track {
-  padding: 0.625rem;
-  border-radius: 0.125rem;
-  background: var(--td-text);
-}
-
 .training-meet .td-status-bar {
   border-radius: 0;
+  box-shadow:
+    0 0 8px color-mix(in srgb, currentColor 35%, transparent),
+    0 1px 4px #20242b20;
 }
 
 .training-meet .td-run-sparkline {

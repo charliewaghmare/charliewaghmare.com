@@ -157,6 +157,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     sleepB,
     sleepHistoryA,
     sleepHistoryB,
+    lactateThreshold,
   ] = await Promise.all([
     encodedName
       ? optional(`/userstats-service/wellness/daily/${encodedName}`, {
@@ -178,6 +179,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     optional(`/sleep-service/stats/sleep/daily/${sleepStart}/${end}`),
     optional(`/sleep-service/stats/sleep/daily/${historyStart}/${sleepHistoryMid}`),
     optional(`/sleep-service/stats/sleep/daily/${addDays(sleepHistoryMid, 1)}/${end}`),
+    optional("/biometric-service/biometric/latestLactateThreshold"),
   ]);
 
   const metrics = buildMetrics({
@@ -189,6 +191,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     balance,
     readiness,
     sleep: [sleepA, sleepB],
+    lactateThreshold,
     end,
   });
 
@@ -325,7 +328,11 @@ function sampleSnapshot(start: string, end: string): TrainingSnapshot {
   const latest = samples[0];
 
   const metrics = [
-    { label: "Training status", value: "Productive" },
+    {
+      label: "Training status",
+      value: "Productive",
+      lactateThreshold: { paceSecondsPerKm: 240, heartRate: 176 },
+    },
     { label: "Training load", value: "412", detail: "Chronic 380 · Ratio 1.08" },
     {
       label: "Training balance",

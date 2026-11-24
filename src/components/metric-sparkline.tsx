@@ -28,7 +28,7 @@ export function MetricSparkline({
   const height = 28;
   const path = points
     .map((point, index) => {
-      const x = historyPosition(points, point.iso) * width;
+      const x = 1 + historyPosition(points, point.iso) * (width - 2);
       const y = height - ((point.value - min) / span) * (height - 4) - 2;
       const gap = index > 0 && !continuous && historyGap(points[index - 1].iso, point.iso);
       return `${index === 0 || gap ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
@@ -42,7 +42,15 @@ export function MetricSparkline({
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d={path}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

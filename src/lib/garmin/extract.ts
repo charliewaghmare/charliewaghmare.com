@@ -5,6 +5,12 @@ export type Metric = {
   value: string;
   detail?: string;
   balance?: TrainingBalance;
+  lactateThreshold?: LactateThreshold;
+};
+
+export type LactateThreshold = {
+  paceSecondsPerKm: number | null;
+  heartRate: number | null;
 };
 
 export type TrainingBalance = {
@@ -124,6 +130,24 @@ export function trainingStatus(payload: unknown): string | null {
   );
 }
 
+export function latestLactateThreshold(payload: unknown): LactateThreshold {
+  const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
+  const records = rows.map(asRecord)
+    .filter((record): record is RecordValue => record !== null && (
+      record.sport == null || String(record.sport).toUpperCase() === "RUNNING"
+    ))
+    .sort((a, b) => (isoFrom(b) ?? "").localeCompare(isoFrom(a) ?? ""));
+  // Garmin can send speed and heart rate in separate records, and spells
+  // the heart-rate key "hearRate" in the latest-threshold endpoint.
+  const heartRate = records.map((record) =>
+    asNumber(record.hearRate) ?? asNumber(record.heartRate) ?? asNumber(record.lactateThresholdHeartRate),
+  ).find((value) => value !== null && value > 0) ?? null;
+  const speed = records.map((record) =>
+    asNumber(record.speed) ?? asNumber(record.lactateThresholdSpeed),
+  ).find((value) => value !== null && value > 0) ?? null;
+  return { heartRate, paceSecondsPerKm: speed === null ? null : 1000 / speed };
+}
+
 export function trainingLoads(payload: unknown): {
   acute: number | null;
   chronic: number | null;
@@ -196,6 +220,7 @@ export function buildMetrics(input: {
   balance: unknown;
   readiness: unknown;
   sleep: unknown[];
+  lactateThreshold?: unknown;
   end?: string;
 }): Metric[] {
   const statusText = trainingStatus(input.status) ?? trainingStatus(input.dailyStatus);
@@ -211,6 +236,7 @@ export function buildMetrics(input: {
     {
       label: "Training status",
       value: statusText ? titlePhrase(statusText) : "—",
+      lactateThreshold: latestLactateThreshold(input.lactateThreshold),
     },
     {
       label: "Training load",
