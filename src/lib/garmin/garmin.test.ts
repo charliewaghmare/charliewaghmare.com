@@ -92,10 +92,10 @@ test("missing metrics are not zero and weekly load is not substituted for acute 
 
 test("lactate threshold uses the latest running readings and converts Garmin speed to pace", () => {
   const payload = [
-    { calendarDate: "2026-10-01", sport: "RUNNING", hearRate: 180, speed: 3.5 },
+    { calendarDate: "2026-10-01", sport: "RUNNING", hearRate: 180, speed: 0.35 },
     { calendarDate: "2026-11-21", sport: "RUNNING", hearRate: "176" },
-    { calendarDate: "2026-11-22", sport: "RUNNING", speed: "4" },
-    { calendarDate: "2026-11-23", sport: "CYCLING", hearRate: 190, speed: 8 },
+    { calendarDate: "2026-11-22", sport: "RUNNING", speed: "0.4" },
+    { calendarDate: "2026-11-23", sport: "CYCLING", hearRate: 190, speed: 0.8 },
   ];
   const threshold = latestLactateThreshold(payload);
   assert.deepEqual(threshold, { heartRate: 176, paceSecondsPerKm: 250 });
@@ -104,6 +104,21 @@ test("lactate threshold uses the latest running readings and converts Garmin spe
   const dashboard = buildDashboardMetrics({ end: "2026-11-23", windowLabel: "30 days", metrics,
     series: { rhr: [], hrv: [], vo2: [], readiness: [], sleep: [], load: [], status: [] } });
   assert.deepEqual(dashboard.find((metric) => metric.id === "status")?.lactateThreshold, threshold);
+});
+
+test("latest-threshold raw speed is converted from cm/ms and remains dynamic", () => {
+  const payload = [
+    { speed: 0.48888752, hearRate: null },
+    { speed: null, hearRate: 184 },
+  ];
+  const threshold = latestLactateThreshold(payload);
+  assert.equal(formatPace(1000, threshold.paceSecondsPerKm!), "3:25 /km");
+  assert.equal(threshold.heartRate, 184);
+  const updated = latestLactateThreshold([{ speed: 0.5, hearRate: 182 }]);
+  assert.equal(formatPace(1000, updated.paceSecondsPerKm!), "3:20 /km");
+  assert.equal(updated.heartRate, 182);
+  const activitySummary = latestLactateThreshold({ lactateThresholdSpeed: 4, lactateThresholdHeartRate: 175 });
+  assert.equal(formatPace(1000, activitySummary.paceSecondsPerKm!), "4:10 /km");
 });
 
 test("missing or invalid lactate threshold readings remain unavailable", () => {

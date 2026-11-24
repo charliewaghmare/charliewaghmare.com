@@ -142,10 +142,16 @@ export function latestLactateThreshold(payload: unknown): LactateThreshold {
   const heartRate = records.map((record) =>
     asNumber(record.hearRate) ?? asNumber(record.heartRate) ?? asNumber(record.lactateThresholdHeartRate),
   ).find((value) => value !== null && value > 0) ?? null;
-  const speed = records.map((record) =>
-    asNumber(record.speed) ?? asNumber(record.lactateThresholdSpeed),
-  ).find((value) => value !== null && value > 0) ?? null;
-  return { heartRate, paceSecondsPerKm: speed === null ? null : 1000 / speed };
+  const speedMetersPerSecond = records.map((record) => {
+    // latestLactateThreshold.speed uses cm/ms: 1 cm/ms = 10 m/s.
+    // The differently named activity-summary field already uses m/s.
+    const speedCentimetersPerMillisecond = asNumber(record.speed);
+    if (speedCentimetersPerMillisecond !== null && speedCentimetersPerMillisecond > 0) {
+      return speedCentimetersPerMillisecond * 10;
+    }
+    return asNumber(record.lactateThresholdSpeed);
+  }).find((value) => value !== null && value > 0) ?? null;
+  return { heartRate, paceSecondsPerKm: speedMetersPerSecond === null ? null : 1000 / speedMetersPerSecond };
 }
 
 export function trainingLoads(payload: unknown): {
