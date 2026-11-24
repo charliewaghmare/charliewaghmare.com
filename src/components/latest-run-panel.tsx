@@ -15,6 +15,7 @@ import type { ActivitySample, ActivitySplit } from "@/lib/garmin/activity-detail
 import type { LatestActivity } from "@/lib/garmin/snapshot";
 
 type TabId = "heart-rate" | "pace" | "elevation" | "splits";
+const PACE_BASELINE_SECONDS = 8 * 60;
 
 export function LatestRunPanel({ activity }: { activity: LatestActivity | null }) {
   const [open, setOpen] = useState(false);
@@ -103,7 +104,10 @@ function TracePreview({ activity }: { activity: LatestActivity }) {
           samples={activity.samples}
           elapsedSeconds={activity.elapsedSeconds}
           read={(sample) => sample.paceSecondsPerKm}
-          label="Pace over the run"
+          label="Pace over the run. Faster pace is higher; the baseline is 8:00 per kilometer."
+          invertY
+          maxY={PACE_BASELINE_SECONDS}
+          area
         />
       </div>
     );
@@ -306,9 +310,12 @@ export function ActivityModal({
                   elapsedSeconds={activity.elapsedSeconds}
                   read={(sample) => sample.paceSecondsPerKm}
                   formatY={(value) => compactPace(value)}
-                  axisLabel="Pace in minutes per kilometer. Slower pace is higher."
+                  axisLabel="Pace in minutes per kilometer. Faster pace is higher; paces slower than 8:00 per kilometer are shown at the baseline."
                   unit="min/km"
-                  note="Pace against elapsed time. Slower pace is higher on the chart."
+                  invertY
+                  maxY={PACE_BASELINE_SECONDS}
+                  area
+                  note="Faster pace is higher. The baseline is 8:00/km; slower readings are pinned to it."
                 />
               ) : null}
               {selected === "elevation" ? (
