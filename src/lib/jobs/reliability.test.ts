@@ -12,16 +12,10 @@ import { excludedDiscoveryRole } from "./role-policy";
 import { applyDiscoveryPolicy } from "./filter";
 import { applySearchPolicy, defaultSearchPreferences } from "./profile";
 import { sampleJobs } from "./demo";
-import { researchTracks } from "./research/tracks";
-import { screenCandidate } from "./research/screen";
 import { atsPostingIdentity } from "./research/ats";
 import { assertPublicHttps } from "./research/safety";
 import { fetchPublicPage } from "./research/verify";
 import { structuredPosting } from "./research/structured";
-import { searchOpenAI, ResearchResponseError } from "./research/openai";
-import { runResearch } from "./research/run";
-import { planResearch } from "./research/plan";
-import { seasonsFor } from "./research/tracks";
 import { auditInventory } from "./inventory";
 
 const now = new Date("2026-11-12T18:00:00Z");
@@ -77,7 +71,6 @@ test("terms expire at season end, country codes normalize, and enrichment recogn
   assert.equal(normalizeCountry("ca"), "Canada");
   assert.equal(assessPosting(posting({ country: "ca", location: "Waterloo", title: "Finance Intern" }), now).publish, true);
   for (const title of ["Summer Analyst", "Industrial Placement", "Undergraduate Research Assistant"]) assert.equal(titleLooksRelevant(title), true);
-  assert.deepEqual(seasonsFor(new Date("2027-11-01")), ["Summer 2028", "Fall 2028", "Winter 2029"]);
 });
 
 test("public verification accepts ordinary fc/fd domain names, rejects IPv6/private URLs and oversized pages", async () => {
@@ -148,15 +141,6 @@ test("structured employer pages require visible titles, employer ownership and c
   assert.equal(make({ ...structured, hiringOrganization: { name: "Northline", sameAs: "https://someoneelse.example" } }), null);
 });
 
-test("depth tool caps reach the request and malformed model responses retain usage", async () => {
-  let tools = 0;
-  await assert.rejects(searchOpenAI({ query: "internships", track: "manual", apiKey: "test", maxToolCalls: 1,
-    fetchImpl: async (_url, init) => { tools = JSON.parse(String(init?.body)).max_tool_calls;
-      return Response.json({ output_text: "invalid", usage: { input_tokens: 123, output_tokens: 45 }, output: [{ type: "web_search_call" }] }); },
-  }), (error: unknown) => error instanceof ResearchResponseError && error.usage.inputTokens === 123 && error.usage.searchCalls === 1);
-  assert.equal(tools, 1);
-});
-
 test("inventory audit shares source requests and does not label unverified roles genuine", async () => {
   let calls = 0;
   const results = await auditInventory([{ id: "one", posting: posting() }, { id: "two", posting: posting({ sourceId: "102", sourceUrl: "https://job-boards.greenhouse.io/northline/jobs/102", applicationUrl: null }) }], {
@@ -167,13 +151,6 @@ test("inventory audit shares source requests and does not label unverified roles
   assert.equal(results[1].verdict, "not_on_complete_board");
 });
 
-test("exhausted research queries become eligible again after the cooldown", () => {
-  const tracks = [{ id: "mechanical", label: "Mechanical", interest: "high" as const, queries: ["mechanical internship Canada"] }];
-  const old = [{ query: tracks[0].queries[0], ranAt: "2026-09-01T00:00:00Z" }];
-  assert.equal(planResearch({ tracks, history: old, now }).length, 1);
-  assert.equal(planResearch({ tracks, history: [{ ...old[0], ranAt: now.toISOString() }], now }).length, 0);
-});
-
 test("collection preserves explicit custom geography when refreshing employer evidence", async () => {
   const live = posting({ title: "Finance Intern", country: "United States", location: "Boston, MA" });
   const store = database({ jobs: [{ id: "job", company_id: "company", source: live.provider, source_id: live.sourceId,
@@ -182,22 +159,6 @@ test("collection preserves explicit custom geography when refreshing employer ev
   await persistCollection(store.db, [{ company, ok: true, error: null, postings: [live], complete: true }]);
   assert.equal(store.tables.jobs[0].active, true);
   assert.equal((store.tables.jobs[0].raw_metadata as Row).allowInternational, true);
-});
-
-test("failed research verifications consume the HTTP verification cap", async () => {
-  let fetches = 0;
-  let queries = 0;
-  const summary = await runResearch({ trigger: "manual", dryRun: true, db: null, history: [], now,
-    fetchImpl: async () => { fetches += 1; return new Response("missing", { status: 404 }); },
-    search: async () => { queries += 1; return { usage: { inputTokens: 1, outputTokens: 1, searchCalls: 0 }, findings: {
-      jobs: Array.from({ length: 8 }, (_, index) => ({ title: posting().title, employer: "Northline", location: "Toronto", country: "Canada",
-        sourceUrl: `https://example.com/jobs/${queries}-${index}`, applicationUrl: `https://example.com/jobs/${queries}-${index}`,
-        evidenceQuote: posting().description, employmentType: "Internship" })), companies: [],
-    } }; },
-  });
-  assert.equal(fetches, 8);
-  assert.equal(summary?.verificationAttempts, 8);
-  assert.equal(summary?.verified, 0);
 });
 
 test("ATS identity matches apply aliases but separates different postings and generic boards", () => {
@@ -216,7 +177,6 @@ test("discovery excludes AI, ML and software roles even under custom internation
     assert.equal(result.publish, false, title);
     assert.equal(result.status, "eligible_student_role", title);
     assert.match(result.reason, /excluded from discovery/);
-    assert.equal(screenCandidate({ title, sourceUrl: job.sourceUrl!, employmentType: "Internship", evidenceQuote: job.description }, new Set(), now).ok, false);
   }
   assert.equal(excludedDiscoveryRole({ title: "Research Internship", description: "Research internship on machine learning for enrolled students." }), true);
 });
@@ -241,11 +201,10 @@ test("existing excluded jobs leave discovery while saved and applied histories r
   assert.equal(applyDiscoveryPolicy([{ ...job, title: "Mechanical Engineering Intern" }]).length, 1);
 });
 
-test("search interests and query tracks no longer target AI or software", () => {
+test("search interests no longer target AI or software", () => {
   const preferences = applySearchPolicy({ ...defaultSearchPreferences, interests: [...defaultSearchPreferences.interests,
     { id: "ai", label: "AI and software engineering", level: "medium" }, { id: "software", label: "Software", level: "medium" }] });
   assert.equal(preferences.interests.some((interest) => ["ai", "ml", "software"].includes(interest.id)), false);
-  assert.equal(researchTracks(now).some((track) => track.id === "software"), false);
   assert.ok(preferences.interests.some((interest) => interest.id === "mechanical"));
 });
 

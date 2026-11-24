@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
 import { JOBS_COOKIE, sessionSecret } from "@/lib/jobs/auth";
-import { countRecentPinFailures, recordPinAttempt } from "@/lib/jobs/repository";
-import {
-  PIN_WINDOW_MS,
-  hashIp,
-  isFourDigitPin,
-  lockoutDecision,
-  signSession,
-  verifyPin,
-} from "@/lib/jobs/security";
-import { databaseConfigured } from "@/lib/jobs/supabase";
+import { checkPinAttempt } from "@/lib/jobs/pin-attempts";
+import { PIN_WINDOW_MS, hashIp, signSession } from "@/lib/jobs/security";
+import { serviceClient } from "@/lib/jobs/supabase";
 
 export async function POST(request: Request) {
   const secret = sessionSecret();
@@ -20,7 +13,8 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
-  if (!databaseConfigured()) {
+  const db = serviceClient();
+  if (!db) {
     return NextResponse.json(
       {
         ok: false,
@@ -37,40 +31,12 @@ export async function POST(request: Request) {
   } catch {
     pin = "";
   }
-  if (!isFourDigitPin(pin)) {
-    return NextResponse.json(
-      { ok: false, message: "Enter the 4-digit PIN." },
-      { status: 400 },
-    );
-  }
-
-  const ipHash = hashIp(clientIp(request), secret);
-  const since = new Date(Date.now() - PIN_WINDOW_MS).toISOString();
-  const failures = await countRecentPinFailures(since, ipHash);
-  if (!failures) {
-    return NextResponse.json(
-      { ok: false, message: "Could not check recent PIN attempts." },
-      { status: 503 },
-    );
-  }
-  const locked = lockoutDecision(failures);
-  if (locked.locked) {
-    return NextResponse.json(
-      { ok: false, message: "Too many attempts. Try again in 15 minutes." },
-      { status: 429 },
-    );
-  }
-
-  const success = verifyPin(pin, pinHash);
-  const recorded = await recordPinAttempt(success, ipHash);
-  if (!recorded) {
-    return NextResponse.json(
-      { ok: false, message: "Could not record the PIN attempt." },
-      { status: 503 },
-    );
-  }
-  if (!success) {
-    return NextResponse.json({ ok: false, message: "Incorrect PIN." }, { status: 401 });
+  const result = await checkPinAttempt(db, { ipHash: hashIp(clientIp(request), secret), pin, pinHash });
+  if (!result.ok) {
+    return NextResponse.json(result, {
+      status: result.status,
+      headers: result.status === 429 ? { "Retry-After": String(PIN_WINDOW_MS / 1000) } : undefined,
+    });
   }
 
   const response = NextResponse.json({ ok: true });

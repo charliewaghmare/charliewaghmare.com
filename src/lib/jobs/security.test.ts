@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   hashPin,
-  lockoutDecision,
   readSessionExpiry,
   signSession,
   verifyPin,
@@ -25,13 +24,4 @@ test("session token expires and rejects tampering", () => {
   assert.equal(readSessionExpiry(token, "other-secret", now + 1000), null);
   const [payload] = token.split(".");
   assert.equal(readSessionExpiry(`${payload}.abcd`, secret, now + 1000), null);
-});
-
-test("lockout uses ip and global failure counts", () => {
-  assert.deepEqual(lockoutDecision({ ipFailures: 4, globalFailures: 4 }), {
-    locked: false,
-    scope: null,
-  });
-  assert.equal(lockoutDecision({ ipFailures: 5, globalFailures: 5 }).scope, "ip");
-  assert.equal(lockoutDecision({ ipFailures: 0, globalFailures: 20 }).scope, "global");
 });

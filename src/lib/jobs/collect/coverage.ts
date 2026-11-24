@@ -8,22 +8,11 @@ export function buildCoverageReport(input: {
   companies?: WatchCompany[];
   collection?: Partial<RunSummary> | null;
   collectionAt?: string | null;
-  research?: {
-    imported?: number;
-    candidates?: number;
-    verified?: number;
-    eligible?: number;
-    duplicates?: number;
-    estimatedUsd?: number | null;
-    searchCalls?: number;
-  } | null;
-  researchAt?: string | null;
-  history?: { type: string; at: string; eligible: number; inserted: number; cost: number | null }[];
+  history?: { type: string; at: string; eligible: number; inserted: number }[];
 }): CoverageReport {
   const companies = input.companies ?? watchlist;
   const active = activeBoards(companies);
   const collection = input.collection ?? null;
-  const research = input.research ?? null;
   return {
     monitored: companies.filter((company) => company.enabled).length,
     verifiedSources: active.length,
@@ -46,13 +35,7 @@ export function buildCoverageReport(input: {
     feedRaw: collection?.feedRaw ?? 0,
     feedClosed: collection?.feedClosed ?? 0,
     feedRejectedLink: collection?.feedRejectedLink ?? 0,
-    aiImported: research?.imported ?? 0,
-    aiCandidates: research?.candidates ?? 0,
-    aiVerified: research?.verified ?? 0,
-    aiCost: research?.estimatedUsd ?? null,
-    aiSearchCalls: research?.searchCalls ?? null,
     lastCollection: input.collectionAt ?? null,
-    lastResearch: input.researchAt ?? null,
     bySource: (collection?.bySource ?? []).map((source) => ({
       name: source.name,
       provider: source.provider,

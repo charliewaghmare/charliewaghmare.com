@@ -7,9 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:jobs": "tsx --test src/lib/jobs/collect/collect.test.ts src/lib/jobs/collect/community.test.ts src/lib/jobs/collect/relevance.test.ts src/lib/jobs/research/research.test.ts src/lib/jobs/research/custom.test.ts src/lib/jobs/security.test.ts src/lib/jobs/reliability.test.ts",
+    "test:jobs": "tsx --test src/lib/jobs/collect/collect.test.ts src/lib/jobs/collect/community.test.ts src/lib/jobs/collect/relevance.test.ts src/lib/jobs/research/verification.test.ts src/lib/jobs/progress.test.ts src/lib/jobs/security.test.ts src/lib/jobs/pin-attempts.test.ts src/lib/jobs/reliability.test.ts",
     "collect": "tsx scripts/collect-jobs.ts",
-    "research": "tsx scripts/research-jobs.ts",
     "audit:jobs": "tsx scripts/audit-jobs.ts",
     "test:training": "tsx --test src/lib/garmin/garmin.test.ts src/lib/garmin/activity-detail.test.ts"
   },
@@ -17,8 +16,7 @@
     "@supabase/supabase-js": "^2.119.0",
     "next": "16.4.4",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "zod": "^4.6.7"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

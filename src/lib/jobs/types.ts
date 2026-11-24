@@ -117,16 +117,6 @@ export type IgnoredJob = {
   suppressedAt: string;
 };
 
-export type StoredSearch = {
-  id: string;
-  prompt: string;
-  createdAt: string;
-  status: string;
-  depth: string | null;
-  added: number | null;
-  cost: number | null;
-};
-
 export type CollectionStatus = {
   status: string;
   startedAt: string;
@@ -141,10 +131,8 @@ export type JobsPageModel = {
   companies: CompanyTarget[];
   preferences: SearchPreferences | null;
   ignored: IgnoredJob[];
-  customSearches: StoredSearch[];
   lastSuccessfulRefresh: string | null;
   collection: CollectionStatus | null;
-  research: CollectionStatus | null;
   coverage: CoverageReport | null;
   databaseConfigured: boolean;
   pinConfigured: boolean;
@@ -170,15 +158,9 @@ export type CoverageReport = {
   feedRaw: number;
   feedClosed: number;
   feedRejectedLink: number;
-  aiImported: number;
-  aiCandidates: number;
-  aiVerified: number;
-  aiCost: number | null;
-  aiSearchCalls: number | null;
   lastCollection: string | null;
-  lastResearch: string | null;
   bySource: { name: string; provider: string; fetched: number; eligible: number; aboveThreshold: number }[];
-  history: { type: string; at: string; eligible: number; inserted: number; cost: number | null }[];
+  history: { type: string; at: string; eligible: number; inserted: number }[];
 };
 
 export function scoreBand(score: number): { id: ScoreBand; label: string } {

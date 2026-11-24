@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CustomSearch } from "@/components/jobs/custom-search";
 import { JobCard } from "@/components/jobs/job-card";
 import { formatTimestamp } from "@/lib/jobs/format";
 import { defaultJobFilters, filterJobs, sortShortlist, uniqueSorted, type JobFilters } from "@/lib/jobs/filter";
@@ -29,7 +28,6 @@ export function JobsDashboard({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [preferences, setPreferences] = useState<SearchPreferences | null>(model.preferences);
-  const [searchPrompt, setSearchPrompt] = useState("");
   const [undo, setUndo] = useState<{ id: string; title: string } | null>(null);
   const filterKey = `${view}:${JSON.stringify(filters)}`;
   const [shownState, setShownState] = useState({ key: filterKey, shown: 12 });
@@ -237,15 +235,6 @@ export function JobsDashboard({
           {model.collection.detail ? ` · ${model.collection.detail}` : ""}
         </p>
       ) : null}
-      {model.research ? (
-        <p className="td-muted mt-2 text-sm leading-6">
-          Latest research: {model.research.status}
-          {model.research.completedAt
-            ? ` · ${formatTimestamp(model.research.completedAt)}`
-            : ` · started ${formatTimestamp(model.research.startedAt)}`}
-          {model.research.detail ? ` · ${model.research.detail}` : ""}
-        </p>
-      ) : null}
 
       <nav className="mt-8 flex flex-wrap gap-2" aria-label="Job sections">
         {(["discover", "companies"] as View[]).map((item) => (
@@ -281,27 +270,15 @@ export function JobsDashboard({
           preferences={preferences}
           coverage={model.coverage}
           ignored={model.ignored}
-          searches={model.customSearches}
-          searchPrompt={searchPrompt}
           busy={busy}
           onPreferences={setPreferences}
-          onPrompt={setSearchPrompt}
           onSave={() => callApi("/api/jobs/preferences", preferences)}
-          onSearch={() => callApi("/api/jobs/custom-search", { prompt: searchPrompt })}
           onUndo={(suppressionId) =>
             callApi("/api/jobs/suppress", { suppressionId }, "DELETE")
           }
         />
       ) : (
         <section className="mt-8">
-          {unlocked && view === "discover" ? (
-            <CustomSearch
-              history={model.customSearches}
-              busy={busy}
-              onBusy={setBusy}
-              onFinished={() => router.refresh()}
-            />
-          ) : null}
           <Filters
             filters={filters}
             tags={tags}
@@ -546,25 +523,17 @@ function SettingsPanel({
   preferences,
   coverage,
   ignored,
-  searches,
-  searchPrompt,
   busy,
   onPreferences,
-  onPrompt,
   onSave,
-  onSearch,
   onUndo,
 }: {
   preferences: SearchPreferences;
   coverage: JobsPageModel["coverage"];
   ignored: JobsPageModel["ignored"];
-  searches: JobsPageModel["customSearches"];
-  searchPrompt: string;
   busy: boolean;
   onPreferences: (preferences: SearchPreferences) => void;
-  onPrompt: (prompt: string) => void;
   onSave: () => void;
-  onSearch: () => void;
   onUndo: (suppressionId: string) => void;
 }) {
   const total = weightsTotal(preferences.weights);
@@ -623,34 +592,6 @@ function SettingsPanel({
         </button>
       </section>
 
-      <section className="td-card p-4 sm:p-5">
-        <h2 className="type-section text-[1.15rem]">Custom search</h2>
-        <p className="td-muted mt-2 text-sm leading-6">
-          Custom research runs from Discover while edit mode is unlocked. It does not run on a schedule.
-        </p>
-        <textarea
-          className="jd-input mt-4 min-h-28"
-          value={searchPrompt}
-          onChange={(event) => onPrompt(event.target.value)}
-          placeholder="Find NASCAR engineering internships in Canada or the United States."
-        />
-        <button type="button" className="jd-button mt-3" disabled={busy} onClick={onSearch}>
-          Save search note
-        </button>
-        {searches.length > 0 ? (
-          <ul className="mt-4 space-y-3 text-sm">
-            {searches.map((search) => (
-              <li key={search.id}>
-                <p>{search.prompt}</p>
-                <p className="td-muted text-[0.75rem]">
-                  {search.status === "not_implemented" ? "Not run" : search.status}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
-
       <section className="td-card p-4 sm:p-5 lg:col-span-2">
         <h2 className="type-section text-[1.15rem]">Ignored listings</h2>
         {ignored.length === 0 ? (
@@ -700,9 +641,6 @@ function CoveragePanel({ coverage }: { coverage: NonNullable<JobsPageModel["cove
     ["Community links skipped", coverage.feedRejectedLink],
     ["Duplicates", coverage.duplicates],
     ["Suppressed", coverage.suppressed],
-    ["AI jobs saved", coverage.aiImported],
-    ["AI searches", coverage.aiSearchCalls ?? "—"],
-    ["AI estimated cost", coverage.aiCost == null ? "—" : `$${coverage.aiCost}`],
   ];
   return (
     <section className="td-card p-4 sm:p-5 lg:col-span-2">
@@ -722,8 +660,7 @@ function CoveragePanel({ coverage }: { coverage: NonNullable<JobsPageModel["cove
         ))}
       </dl>
       <p className="td-muted mt-4 text-[0.8125rem] leading-6">
-        Last collection {formatTimestamp(coverage.lastCollection) ?? "not recorded"}. Last research{" "}
-        {formatTimestamp(coverage.lastResearch) ?? "not recorded"}.
+        Last collection {formatTimestamp(coverage.lastCollection) ?? "not recorded"}.
       </p>
       {coverage.bySource.length > 0 ? (
         <ul className="mt-3 space-y-1 text-[0.8125rem] leading-6">

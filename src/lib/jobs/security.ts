@@ -73,15 +73,6 @@ export function hashIp(ip: string, secret: string): string {
   return createHmac("sha256", secret).update(ip).digest("base64url");
 }
 
-export function lockoutDecision(input: {
-  ipFailures: number;
-  globalFailures: number;
-}): { locked: boolean; scope: "ip" | "global" | null } {
-  if (input.ipFailures >= PIN_IP_LIMIT) return { locked: true, scope: "ip" };
-  if (input.globalFailures >= PIN_GLOBAL_LIMIT) return { locked: true, scope: "global" };
-  return { locked: false, scope: null };
-}
-
 export function isFourDigitPin(pin: string): boolean {
   return /^\d{4}$/.test(pin);
 }

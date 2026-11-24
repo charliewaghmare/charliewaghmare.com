@@ -13,7 +13,6 @@ import type {
   JobsPageModel,
   ScoreBreakdown,
   SearchPreferences,
-  StoredSearch,
   WorkArrangement,
 } from "@/lib/jobs/types";
 
@@ -79,10 +78,8 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     companies: sampleCompanies,
     preferences: unlocked ? defaultSearchPreferences : null,
     ignored: [],
-    customSearches: [],
     lastSuccessfulRefresh: null,
     collection: null,
-    research: null,
     coverage: unlocked ? buildCoverageReport({ companies: watchlist }) : null,
     databaseConfigured: databaseConfigured(),
     pinConfigured: pinConfigured(),
@@ -112,8 +109,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
 
   const rows = (fallback.data as JobRow[]).filter((row) => row.is_sample !== true);
   const companies = await loadCompanies(reader);
-  const collection = await loadRunStatus("collection");
-  const research = await loadRunStatus("research");
+  const collection = await loadRunStatus();
   if (rows.length === 0 && !unlocked) {
     return {
       ...emptyDatabase(
@@ -121,8 +117,7 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
       ),
       companies,
       collection,
-      research,
-      coverage: unlocked ? await loadCoverage(serviceClient(), collection, research) : null,
+      coverage: unlocked ? await loadCoverage(serviceClient(), collection) : null,
       lastSuccessfulRefresh: collection?.status === "success" ? collection.completedAt : null,
       databaseConfigured: databaseConfigured(),
       pinConfigured: pinConfigured(),
@@ -134,13 +129,12 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
   const historyJobs: JobListing[] = [];
   let preferences: SearchPreferences | null = null;
   let ignored: IgnoredJob[] = [];
-  let customSearches: StoredSearch[] = [];
   let lastSuccessfulRefresh: string | null = null;
 
   const service = serviceClient();
   if (unlocked && service) {
     const ids = rows.map((row) => row.id);
-    const [statusResult, preferenceResult, ignoredResult, searchResult, refreshResult] =
+    const [statusResult, preferenceResult, ignoredResult, refreshResult] =
       await Promise.all([
         service.from("user_job_status").select("*").in("job_id", ids),
         service.from("search_preferences").select("*").eq("id", 1).maybeSingle(),
@@ -149,13 +143,6 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
           .select("id, job_id, source, source_id, suppressed_at, jobs(title, companies(name))")
           .order("suppressed_at", { ascending: false })
           .limit(20),
-        service
-          .from("search_runs")
-          .select("id, prompt, started_at, status, added_count, summary")
-          .eq("run_type", "research")
-          .not("prompt", "is", null)
-          .order("started_at", { ascending: false })
-          .limit(8),
         service
           .from("search_runs")
           .select("completed_at")
@@ -186,24 +173,6 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     }
     preferences = preferencesFromRow(preferenceResult.data) ?? defaultSearchPreferences;
     ignored = mapIgnored(ignoredResult.data ?? []);
-    customSearches = ((searchResult.data ?? []) as {
-      id: string;
-      prompt: string | null;
-      started_at: string;
-      status: string;
-      added_count: number | null;
-      summary: { depth?: string; estimatedUsd?: number | null } | null;
-    }[])
-      .filter((row) => row.prompt)
-      .map((row) => ({
-        id: row.id,
-        prompt: row.prompt ?? "",
-        createdAt: row.started_at,
-        status: row.status,
-        depth: row.summary?.depth ?? null,
-        added: row.added_count,
-        cost: row.summary?.estimatedUsd ?? null,
-      }));
     lastSuccessfulRefresh =
       (refreshResult.data as { completed_at: string | null } | null)?.completed_at ?? null;
   } else if (service) {
@@ -229,11 +198,9 @@ export async function getJobsPageModel(unlocked: boolean): Promise<JobsPageModel
     companies,
     preferences,
     ignored,
-    customSearches,
     lastSuccessfulRefresh: lastSuccessfulRefresh ?? (collection?.status === "success" ? collection.completedAt : null),
     collection,
-    research,
-    coverage: unlocked ? await loadCoverage(serviceClient(), collection, research) : null,
+    coverage: unlocked ? await loadCoverage(serviceClient(), collection) : null,
     databaseConfigured: true,
     pinConfigured: pinConfigured(),
   };
@@ -247,10 +214,8 @@ function emptyDatabase(note: string): JobsPageModel {
     companies: [],
     preferences: null,
     ignored: [],
-    customSearches: [],
     lastSuccessfulRefresh: null,
     collection: null,
-    research: null,
     coverage: null,
     databaseConfigured: true,
     pinConfigured: false,
@@ -279,12 +244,12 @@ async function loadCompanies(reader: SupabaseClient): Promise<CompanyTarget[]> {
 async function loadCoverage(
   db: SupabaseClient | null,
   collection: JobsPageModel["collection"],
-  research: JobsPageModel["research"],
 ): Promise<JobsPageModel["coverage"]> {
   if (!db) return buildCoverageReport({ companies: watchlist });
   const { data } = await db
     .from("search_runs")
     .select("run_type, status, completed_at, summary")
+    .eq("run_type", "collection")
     .in("status", ["success", "partial"])
     .order("started_at", { ascending: false })
     .limit(12);
@@ -301,35 +266,30 @@ async function loadCoverage(
   }));
   const rows = data ?? [];
   const latestCollection = rows.find((row) => row.run_type === "collection");
-  const latestResearch = rows.find((row) => row.run_type === "research");
   const collectionSummary = (latestCollection?.summary ?? null) as Parameters<typeof buildCoverageReport>[0]["collection"];
-  const researchSummary = (latestResearch?.summary ?? null) as Parameters<typeof buildCoverageReport>[0]["research"];
   return buildCoverageReport({
     companies: monitored,
     collection: collectionSummary,
     collectionAt: collection?.completedAt ?? (latestCollection?.completed_at as string | null) ?? null,
-    research: researchSummary,
-    researchAt: research?.completedAt ?? (latestResearch?.completed_at as string | null) ?? null,
     history: rows.slice(0, 8).map((row) => {
-      const summary = (row.summary ?? {}) as { eligibleStudent?: number; eligible?: number; inserted?: number; imported?: number; estimatedUsd?: number | null };
+      const summary = (row.summary ?? {}) as { eligibleStudent?: number; inserted?: number };
       return {
         type: String(row.run_type),
         at: (row.completed_at as string | null) ?? "",
-        eligible: summary.eligibleStudent ?? summary.eligible ?? 0,
-        inserted: summary.inserted ?? summary.imported ?? 0,
-        cost: summary.estimatedUsd ?? null,
+        eligible: summary.eligibleStudent ?? 0,
+        inserted: summary.inserted ?? 0,
       };
     }),
   });
 }
 
-async function loadRunStatus(runType: "collection" | "research"): Promise<JobsPageModel["collection"]> {
+async function loadRunStatus(): Promise<JobsPageModel["collection"]> {
   const service = serviceClient();
   if (!service) return null;
   const { data } = await service
     .from("search_runs")
     .select("status, started_at, completed_at, error, summary, run_type")
-    .eq("run_type", runType)
+    .eq("run_type", "collection")
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -337,19 +297,13 @@ async function loadRunStatus(runType: "collection" | "research"): Promise<JobsPa
   const summary = data.summary as {
     inserted?: number;
     updated?: number;
-    imported?: number;
-    eligible?: number;
-    companiesAdded?: number;
-    estimatedUsd?: number | null;
     errors?: string[];
   } | null;
   const detail = data.error
     ? String(data.error)
-    : runType === "research" && summary
-      ? `${summary.imported ?? 0} imported, ${summary.eligible ?? 0} eligible, ${summary.companiesAdded ?? 0} companies${summary.estimatedUsd != null ? `, about $${summary.estimatedUsd}` : ""}`
-      : summary
-        ? `${summary.inserted ?? 0} new, ${summary.updated ?? 0} updated`
-        : null;
+    : summary
+      ? `${summary.inserted ?? 0} new, ${summary.updated ?? 0} updated`
+      : null;
   return {
     status: data.status as string,
     startedAt: data.started_at as string,
@@ -511,39 +465,6 @@ function mapIgnored(rows: unknown[]): IgnoredJob[] {
   });
 }
 
-export async function countRecentPinFailures(sinceIso: string, ipHash: string): Promise<{
-  ipFailures: number;
-  globalFailures: number;
-} | null> {
-  const service = serviceClient();
-  if (!service) return null;
-  const [ipResult, globalResult] = await Promise.all([
-    service
-      .from("pin_attempts")
-      .select("id", { count: "exact", head: true })
-      .eq("success", false)
-      .eq("ip_hash", ipHash)
-      .gte("attempted_at", sinceIso),
-    service
-      .from("pin_attempts")
-      .select("id", { count: "exact", head: true })
-      .eq("success", false)
-      .gte("attempted_at", sinceIso),
-  ]);
-  if (ipResult.error || globalResult.error) return null;
-  return {
-    ipFailures: ipResult.count ?? 0,
-    globalFailures: globalResult.count ?? 0,
-  };
-}
-
-export async function recordPinAttempt(success: boolean, ipHash: string): Promise<boolean> {
-  const service = serviceClient();
-  if (!service) return false;
-  const { error } = await service.from("pin_attempts").insert({ success, ip_hash: ipHash });
-  return !error;
-}
-
 export async function writeJobStatus(input: {
   jobId: string;
   saved?: boolean;
@@ -675,120 +596,6 @@ export async function savePreferences(
   });
   if (error) return { ok: false, status: 500, message: "Could not save preferences." };
   return { ok: true };
-}
-
-export async function requestCustomResearch(input: {
-  prompt: string;
-  depth: "quick" | "standard" | "deep";
-}): Promise<{ ok: true; runId: string } | { ok: false; status: number; message: string }> {
-  const service = serviceClient();
-  if (!service) return { ok: false, status: 503, message: "Database is not configured." };
-  const cutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();
-  const { data: running } = await service
-    .from("search_runs")
-    .select("id")
-    .eq("run_type", "research")
-    .in("status", ["requested", "running"])
-    .gte("started_at", cutoff)
-    .limit(1);
-  if (running && running.length > 0) {
-    return { ok: false, status: 409, message: "A research run is already in progress." };
-  }
-  const now = new Date().toISOString();
-  const { data: created, error } = await service
-    .from("search_runs")
-    .insert({
-      started_at: now,
-      run_type: "research",
-      status: "requested",
-      prompt: input.prompt,
-      summary: { depth: input.depth },
-    })
-    .select("id")
-    .single();
-  if (error || !created) return { ok: false, status: 500, message: "Could not record the research request." };
-  const token = process.env.JOBS_GITHUB_DISPATCH_TOKEN;
-  const repository = process.env.JOBS_GITHUB_REPOSITORY;
-  if (!token || !repository || !/^[\w.-]+\/[\w.-]+$/.test(repository)) {
-    await service
-      .from("search_runs")
-      .update({
-        status: "failed",
-        completed_at: new Date().toISOString(),
-        error: "GitHub dispatch is not configured.",
-      })
-      .eq("id", created.id);
-    return {
-      ok: false,
-      status: 501,
-      message: "Research was not started. Add the GitHub dispatch token used by Refresh jobs.",
-    };
-  }
-  const response = await fetch(
-    `https://api.github.com/repos/${repository}/actions/workflows/research-jobs.yml/dispatches`,
-    {
-      method: "POST",
-      headers: {
-        accept: "application/vnd.github+json",
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-        "x-github-api-version": "2022-11-28",
-      },
-      body: JSON.stringify({
-        ref: "main",
-        inputs: { query: input.prompt, depth: input.depth, run_id: created.id },
-      }),
-    },
-  );
-  if (!response.ok) {
-    await service
-      .from("search_runs")
-      .update({
-        status: "failed",
-        completed_at: new Date().toISOString(),
-        error: `GitHub dispatch failed (${response.status}).`,
-      })
-      .eq("id", created.id);
-    return { ok: false, status: 502, message: "GitHub did not accept the research request." };
-  }
-  return { ok: true, runId: created.id as string };
-}
-
-export async function readResearchRun(id: string): Promise<
-  | {
-      ok: true;
-      run: {
-        id: string;
-        status: string;
-        prompt: string | null;
-        startedAt: string;
-        completedAt: string | null;
-        error: string | null;
-        summary: Record<string, unknown> | null;
-      };
-    }
-  | { ok: false; status: number; message: string }
-> {
-  const service = serviceClient();
-  if (!service) return { ok: false, status: 503, message: "Database is not configured." };
-  const { data, error } = await service
-    .from("search_runs")
-    .select("id, status, prompt, started_at, completed_at, error, summary")
-    .eq("id", id)
-    .maybeSingle();
-  if (error || !data) return { ok: false, status: 404, message: "Research run not found." };
-  return {
-    ok: true,
-    run: {
-      id: data.id as string,
-      status: data.status as string,
-      prompt: (data.prompt as string | null) ?? null,
-      startedAt: data.started_at as string,
-      completedAt: (data.completed_at as string | null) ?? null,
-      error: (data.error as string | null) ?? null,
-      summary: (data.summary as Record<string, unknown> | null) ?? null,
-    },
-  };
 }
 
 function vancouverToday(): string {

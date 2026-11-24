@@ -17,11 +17,6 @@ export function vancouverLocal(now: Date): { hour: number; weekday: number } {
   return { hour: local.getUTCHours(), weekday: local.getUTCDay() };
 }
 
-/** Scheduled research is off. A run starts only from an explicit search on the jobs page. */
-export function shouldRunResearch(_now: Date, trigger: string): boolean {
-  return trigger !== "schedule";
-}
-
 function utcOnNthSunday(year: number, monthIndex: number, nth: number, utcHour: number): number {
   const first = new Date(Date.UTC(year, monthIndex, 1));
   const firstSunday = 1 + ((7 - first.getUTCDay()) % 7);
