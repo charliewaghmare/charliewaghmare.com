@@ -79,7 +79,7 @@ export function MetricExplorer({
             id="primary-metrics-heading"
             className="type-section td-text text-[1.125rem] leading-tight sm:text-[1.25rem]"
           >
-            Now
+            Training and performance
           </h2>
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {primary.map((metric) => metric.id === "status" ? (
@@ -89,6 +89,7 @@ export function MetricExplorer({
                 key={metric.id}
                 metric={metric}
                 onOpen={(trigger) => openMetricById(metric.id, trigger)}
+                className={metric.id === "balance" ? "col-span-2" : undefined}
               />
             ))}
           </div>
@@ -103,15 +104,14 @@ export function MetricExplorer({
             id="secondary-metrics-heading"
             className="type-section td-text text-[1.125rem] leading-tight sm:text-[1.25rem]"
           >
-            Recovery and targets
+            Health
           </h2>
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {secondary.map((metric) => (
               <MetricCardButton
                 key={metric.id}
                 metric={metric}
                 onOpen={(trigger) => openMetricById(metric.id, trigger)}
-                className={metric.id === "balance" ? "col-span-2" : undefined}
               />
             ))}
           </div>

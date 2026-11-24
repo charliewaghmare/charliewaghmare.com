@@ -9,8 +9,8 @@ import { site } from "@/content/site";
 import { formatDay } from "@/lib/garmin/format";
 import type { TrainingSnapshot } from "@/lib/garmin/snapshot";
 
-const PRIMARY_IDS = ["status", "vo2", "hrv", "readiness"];
-const SECONDARY_IDS = ["balance", "rhr", "sleep"];
+const PRIMARY_IDS = ["status", "vo2", "balance"];
+const SECONDARY_IDS = ["hrv", "rhr", "sleep"];
 
 export function TrainingView({
   snapshot,
@@ -205,8 +205,8 @@ export function TrainingFallback() {
         <div className="td-skeleton mt-3 h-4 w-80 max-w-full animate-pulse rounded" />
       </div>
       <div className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="td-skeleton h-28 animate-pulse rounded-[0.75rem]" />
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className={`td-skeleton h-28 animate-pulse rounded-[0.75rem]${index === 2 ? " col-span-2" : ""}`} />
         ))}
       </div>
       <div className="mt-12 grid gap-4 lg:grid-cols-2">
