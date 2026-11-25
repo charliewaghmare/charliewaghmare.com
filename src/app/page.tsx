@@ -7,7 +7,7 @@ import { About } from "@/components/about";
 import { Projects } from "@/components/projects";
 import { ResumeSection } from "@/components/resume-section";
 import { site } from "@/content/site";
-import { getTrainingSnapshot } from "@/lib/garmin/snapshot";
+import { getLatestRunSnapshot } from "@/lib/garmin/snapshot";
 import { hasResumePdf } from "@/lib/resume";
 
 export default function Home() {
@@ -37,6 +37,6 @@ export default function Home() {
 }
 
 async function LatestRun() {
-  const snapshot = await getTrainingSnapshot();
+  const snapshot = await getLatestRunSnapshot();
   return <LatestRunCard activity={snapshot.latestActivity} sample={snapshot.source === "sample"} />;
 }

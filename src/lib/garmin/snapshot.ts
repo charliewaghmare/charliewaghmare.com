@@ -1,7 +1,8 @@
 import { deriveKilometerSplits, downsampleSamples, samplesFromDetails, splitsFromPayload, type ActivitySample, type ActivitySplit } from "@/lib/garmin/activity-detail";
 import { formatDuration, formatLocalClock } from "@/lib/garmin/format";
 import { activityWindow, dayBars, toRow, toRunCard, totalsLabel, type Activity } from "@/lib/garmin/activities";
-import { cacheLife } from "next/cache";
+import { cache } from "react";
+import { connection } from "next/server";
 import {
   GarminAuthError,
   garminGet,
@@ -91,11 +92,38 @@ export type TrainingSnapshot = {
   activities: LatestActivity[];
 };
 
-export async function getTrainingSnapshot(): Promise<TrainingSnapshot> {
-  "use cache";
-  cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+// React cache deduplicates reads within one render, never across requests.
+// Wait for a real request so Garmin data cannot enter the static/prefetched shell.
+export const getTrainingSnapshot = cache(async (): Promise<TrainingSnapshot> => {
+  await connection();
   return loadTrainingSnapshot();
-}
+});
+
+export const getLatestRunSnapshot = cache(async (): Promise<Pick<TrainingSnapshot, "source" | "latestActivity">> => {
+  await connection();
+  const today = vancouverToday();
+  const start = addDays(today, -29);
+  const configured = readGarminToken();
+  if (!configured.ok) {
+    return configured.reason === "missing"
+      ? { source: "sample", latestActivity: sampleSnapshot(start, today).latestActivity }
+      : { source: "unavailable", latestActivity: null };
+  }
+  try {
+    const { activities } = await recentActivities(start);
+    const latest = activities.find((activity) => activity.run && activity.date <= today) ?? null;
+    const trace = latest ? await activityTrace(latest.id, latest.distanceMeters) : emptyTrace();
+    return { source: "garmin", latestActivity: latest ? toLatestActivity(latest, trace) : null };
+  } catch (error) {
+    console.error(garminFailureNote(error));
+    return { source: "unavailable", latestActivity: null };
+  }
+});
+
+const recentActivities = cache((start: string) => activityWindow(
+  start,
+  (offset) => garminGet("/activitylist-service/activities/search/activities", { start: offset, limit: 100 }),
+));
 
 async function loadTrainingSnapshot(): Promise<TrainingSnapshot> {
   const today = vancouverToday();
@@ -114,18 +142,21 @@ async function loadTrainingSnapshot(): Promise<TrainingSnapshot> {
   try {
     return await liveSnapshot(start, today);
   } catch (error) {
-    const note =
-      error instanceof GarminAuthError
-        ? "Garmin refused the token. Create a new one and update it in Vercel."
-        : "Garmin didn’t respond. Refresh in a few minutes.";
+    const note = garminFailureNote(error);
     console.error(note);
     return unavailableSnapshot(start, today, note);
   }
 }
 
+function garminFailureNote(error: unknown): string {
+  return error instanceof GarminAuthError
+    ? "Garmin refused the token. Create a new one and update it in Vercel."
+    : "Garmin didn’t respond. Refresh in a few minutes.";
+}
+
 async function liveSnapshot(start: string, end: string): Promise<TrainingSnapshot> {
   const [activitiesPayload, profile] = await Promise.all([
-    activityWindow(start, (offset) => garminGet("/activitylist-service/activities/search/activities", { start: offset, limit: 100 })),
+    recentActivities(start),
     optional("/userprofile-service/socialProfile"),
   ]);
 
@@ -134,8 +165,6 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     (activity) => activity.date >= start && activity.date <= end,
   );
   const latest = parsed.find((activity) => activity.run && activity.date <= end) ?? null;
-  const trace = latest ? await activityTrace(latest.id, latest.distanceMeters) : emptyTrace();
-  const points = trace.points;
   const displayName = displayNameFrom(profile);
   const encodedName = displayName ? encodeURIComponent(displayName) : null;
 
@@ -143,6 +172,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
   const sleepStart = addDays(end, -27);
   const sleepHistoryMid = addDays(historyStart, 180);
   const [
+    trace,
     rhr,
     hrv,
     vo2,
@@ -159,6 +189,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     sleepHistoryB,
     lactateThreshold,
   ] = await Promise.all([
+    latest ? activityTrace(latest.id, latest.distanceMeters) : Promise.resolve(emptyTrace()),
     encodedName
       ? optional(`/userstats-service/wellness/daily/${encodedName}`, {
           fromDate: historyStart,
@@ -181,6 +212,7 @@ async function liveSnapshot(start: string, end: string): Promise<TrainingSnapsho
     optional(`/sleep-service/stats/sleep/daily/${addDays(sleepHistoryMid, 1)}/${end}`),
     optional("/biometric-service/biometric/latestLactateThreshold"),
   ]);
+  const points = trace.points;
 
   const metrics = buildMetrics({
     rhr,
@@ -258,9 +290,8 @@ async function activityTrace(activityId: string, distanceMeters: number | null, 
 }
 
 /** Only call with a summary from the public training snapshot. */
-export async function getActivityDetail(activity: LatestActivity): Promise<LatestActivity> {
-  "use cache";
-  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+export const getActivityDetail = cache(async (activity: LatestActivity): Promise<LatestActivity> => {
+  await connection();
   const trace = await activityTrace(activity.id, activity.distanceMeters, true);
   const heartCount = trace.samples.filter((sample) => sample.heartRate !== null).length;
   const paceCount = trace.samples.filter((sample) => sample.paceSecondsPerKm !== null).length;
@@ -269,7 +300,7 @@ export async function getActivityDetail(activity: LatestActivity): Promise<Lates
     ...trace,
     trace: heartCount >= 8 ? "heart-rate" : paceCount >= 8 ? "pace" : null,
   };
-}
+});
 
 function toLatestActivity(activity: Activity, trace: ActivityTrace): LatestActivity {
   const row = toRow(activity);

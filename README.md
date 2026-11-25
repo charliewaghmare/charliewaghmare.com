@@ -41,7 +41,9 @@ Personal bests are not taken from Garmin. Edit `src/content/personal-bests.ts` w
 
 Real data needs an environment variable named `GARMIN_TOKEN`. Its value is the JSON in `~/.garminconnect/garmin_tokens.json` after you sign in with the [Garmin MCP](https://github.com/Taxuspt/garmin_mcp) (`garmin-mcp-auth`). Put that JSON in Vercel under **Settings → Environment Variables** for Production, then redeploy. Do not commit it, and do not paste it into chat.
 
-Until that variable is set, the pages show a labeled sample. A refresh asks Garmin again about once a minute, so visitors are not each calling Garmin.
+Until that variable is set, the pages show a labeled sample. Each page request waits for current Garmin data inside its loading boundary. Snapshots are not prerendered or served from a stale-while-revalidate cache; duplicate reads are shared only within the same server render. The home card fetches recent runs and the latest run details without loading the dashboard’s metric history. Run-detail requests also read Garmin again. If Garmin is unavailable, the site shows the unavailable state rather than replaying an old snapshot.
+
+After a production build, run `npm run test:training:freshness` to check first-request freshness against an isolated mock Garmin source. It starts a local production server with a fake token and never calls the real Garmin account. The check changes runs, metrics and historical traces between requests and verifies outage recovery.
 
 ## Jobs
 

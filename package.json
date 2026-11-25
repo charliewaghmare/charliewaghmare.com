@@ -10,7 +10,8 @@
     "test:jobs": "tsx --test src/lib/jobs/collect/collect.test.ts src/lib/jobs/collect/community.test.ts src/lib/jobs/collect/relevance.test.ts src/lib/jobs/research/verification.test.ts src/lib/jobs/progress.test.ts src/lib/jobs/security.test.ts src/lib/jobs/pin-attempts.test.ts src/lib/jobs/reliability.test.ts",
     "collect": "tsx scripts/collect-jobs.ts",
     "audit:jobs": "tsx scripts/audit-jobs.ts",
-    "test:training": "tsx --test src/lib/garmin/garmin.test.ts src/lib/garmin/activity-detail.test.ts"
+    "test:training": "tsx --test src/lib/garmin/garmin.test.ts src/lib/garmin/activity-detail.test.ts",
+    "test:training:freshness": "node --test scripts/training-freshness.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
