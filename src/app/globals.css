@@ -681,6 +681,72 @@ code.text-code {
   outline-offset: 3px;
 }
 
+.home-run-link {
+  text-decoration: none;
+  transition: border-color var(--td-transition);
+}
+
+.home-run-content {
+  transition: filter var(--td-transition), opacity var(--td-transition);
+}
+
+.home-run-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--td-surface) 25%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--td-transition);
+}
+
+.home-run-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--td-accent);
+  border-radius: var(--td-radius);
+  background: var(--td-surface);
+  color: var(--td-accent);
+  padding: 0.75rem 1rem;
+  font-family: var(--font-training-display), "Arial Narrow", sans-serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  box-shadow: 0 4px 18px #20242b1a;
+}
+
+.home-run-link:focus-visible {
+  outline: 2px solid var(--td-accent);
+  outline-offset: 4px;
+}
+
+.home-run-link:focus-visible .home-run-content {
+  filter: blur(2px);
+  opacity: 0.7;
+}
+
+.home-run-link:focus-visible .home-run-overlay {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .home-run-link:hover {
+    border-color: var(--td-accent);
+  }
+
+  .home-run-link:hover .home-run-content {
+    filter: blur(2px);
+    opacity: 0.7;
+  }
+
+  .home-run-link:hover .home-run-overlay {
+    opacity: 1;
+  }
+}
+
 .home-button {
   border: 1px solid var(--td-border);
   border-radius: var(--td-radius);
@@ -842,6 +908,9 @@ code.text-code {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .home-run-link,
+  .home-run-content,
+  .home-run-overlay,
   .home-button,
   .jobs-theme .jd-tab,
   .jobs-theme .jd-button,
