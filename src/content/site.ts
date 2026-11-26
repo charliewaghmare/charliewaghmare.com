@@ -22,7 +22,8 @@ export const site = {
    * Short bio. Leave this empty until you have the copy.
    * Separate paragraphs with a blank line.
    */
-  about: "I am a 2nd year materials engineering student at the University of British Columbia",
+  about:
+    "I am a 2nd year materials engineering student at the University of British Columbia",
   /**
    * Projects are hidden while this list is empty.
    * Add an entry when you want one on the page. Links (href and repo) are optional.
@@ -56,5 +57,5 @@ export const site = {
 export const resumeFile = {
   /** File name inside the public folder. */
   filename: "resume.pdf",
-  downloadName: "Charlie-Waghmare-Resume-Coop.pdf",
+  downloadName: "Charlie-Waghmare-Coop-Resume.pdf",
 } as const;
