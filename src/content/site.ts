@@ -56,6 +56,6 @@ export const site = {
 
 export const resumeFile = {
   /** File name inside the public folder. */
-  filename: "resume.pdf",
-  downloadName: "Charlie-Waghmare-Coop-Resume.pdf",
+  filename: "Charlie-Waghmare-Coop-Resume.pdf",
+  downloadName: "Charlie-Waghmare-Resume.pdf",
 } as const;
